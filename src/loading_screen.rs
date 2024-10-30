@@ -3,7 +3,7 @@ use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::{Span, Line},
+    text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
@@ -21,8 +21,10 @@ pub struct MatrixRain {
 impl MatrixRain {
     pub fn new(width: usize) -> Self {
         let mut rng = thread_rng();
-        let matrix_chars = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ1234567890".chars().collect::<Vec<char>>();
-        
+        let matrix_chars = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ1234567890"
+            .chars()
+            .collect::<Vec<char>>();
+
         MatrixRain {
             chars: (0..width)
                 .map(|_| {
@@ -70,34 +72,40 @@ impl MatrixRain {
                 let pos = self.positions[x] as i32;
                 let char_index = (y as i32 - pos).rem_euclid(self.chars[x].len() as i32) as usize;
                 let intensity = ((y as i32 - pos) as f32 * 0.5).min(1.0).max(0.0);
-                let color = if intensity > 0.0 {
-                    Color::Rgb(0, (intensity * 255.0) as u8, 0)
+
+                if intensity <= 0.0 {
+                    line.push(Span::styled(
+                        self.chars[x][char_index].to_string(),
+                        Style::default().fg(Color::Green),
+                    ));
                 } else {
-                    Color::Black
-                };
-                line.push(Span::styled(
-                    self.chars[x][char_index].to_string(),
-                    Style::default().fg(color),
-                ));
+                    line.push(Span::styled(
+                        " ",              // Use space for transparency
+                        Style::default(), // No color styling needed for transparent characters
+                    ));
+                }
             }
             lines.push(Line::from(line));
         }
 
         // Draw the background and matrix rain
-        let background = Paragraph::new(lines)
-            .style(Style::default().bg(Color::Black));
+        let background = Paragraph::new(lines).style(Style::default());
         f.render_widget(background, area);
 
-        // Draw the loading text in the center
+        // Draw the loading text in the center with matching green color
         let loading_text = if self.blink_state {
             "Loading..."
         } else {
             "         "
         };
-        
+
         let loading_block = Paragraph::new(loading_text)
             .style(Style::default().fg(Color::Green))
-            .block(Block::default().borders(Borders::ALL));
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::Green)),
+            );
 
         let loading_area = centered_rect(20, 10, area);
         f.render_widget(loading_block, loading_area);
@@ -122,4 +130,4 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1]
-} 
+}

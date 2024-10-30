@@ -1,23 +1,23 @@
-use std::error::Error;
-use std::io;
-use std::time::Duration;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use open;
 use ratatui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::{Span, Line},
+    text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame, Terminal,
 };
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tokio;
-use open; // Added for browser openin
+use std::error::Error;
+use std::io;
+use std::time::Duration;
+use tokio; // Added for browser openin
 mod loading_screen;
 use loading_screen::MatrixRain;
 
@@ -47,8 +47,8 @@ struct App {
     mode: Mode,
     claude_summary: Option<String>,
     status_message: Option<(String, std::time::Instant)>, // Add this line/
-    current_section: Section,  // Add this line
-    scroll_offset: usize,  // Add this line
+    current_section: Section,                             // Add this line
+    scroll_offset: usize,                                 // Add this line
 }
 
 #[derive(PartialEq)]
@@ -69,8 +69,8 @@ impl App {
             mode: Mode::Normal,
             claude_summary: None,
             status_message: None,
-            current_section: Section::Top,  // Add this line
-            scroll_offset: 0,  // Add this line
+            current_section: Section::Top, // Add this line
+            scroll_offset: 0,              // Add this line
         }
     }
 
@@ -82,7 +82,10 @@ impl App {
 
     fn previous_story(&mut self) {
         if !self.stories.is_empty() {
-            self.selected_index = self.selected_index.checked_sub(1).unwrap_or(self.stories.len() - 1);
+            self.selected_index = self
+                .selected_index
+                .checked_sub(1)
+                .unwrap_or(self.stories.len() - 1);
         }
     }
 
@@ -109,24 +112,25 @@ impl App {
         }
     }
 
-    async fn refresh_stories(&mut self, terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<(), Box<dyn Error + Send + Sync>> {
+    async fn refresh_stories(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
         // Create loading animation
         let mut matrix_rain = MatrixRain::new(terminal.size()?.width as usize);
-        
+
         // Clone the section before moving it into the spawned task
         let section = self.current_section;
-        
+
         // Spawn the story fetching task
-        let stories_future = tokio::spawn(async move {
-            fetch_stories(section).await
-        });
-        
+        let stories_future = tokio::spawn(async move { fetch_stories(section).await });
+
         let start_time = std::time::Instant::now();
-        
+
         loop {
             terminal.draw(|f| matrix_rain.draw(f, f.size()))?;
             matrix_rain.update();
-            
+
             // Check for quit
             if event::poll(Duration::from_millis(50))? {
                 if let Event::Key(key) = event::read()? {
@@ -135,7 +139,7 @@ impl App {
                     }
                 }
             }
-            
+
             // Check if stories are ready
             if stories_future.is_finished() {
                 match stories_future.await {
@@ -148,29 +152,29 @@ impl App {
                     Ok(Err(e)) => {
                         return Err(Box::new(std::io::Error::new(
                             std::io::ErrorKind::Other,
-                            format!("Failed to fetch stories: {}", e)
+                            format!("Failed to fetch stories: {}", e),
                         )) as Box<dyn Error + Send + Sync>);
                     }
                     Err(e) => {
                         return Err(Box::new(std::io::Error::new(
                             std::io::ErrorKind::Other,
-                            format!("Task join error: {}", e)
+                            format!("Task join error: {}", e),
                         )) as Box<dyn Error + Send + Sync>);
                     }
                 }
             }
-            
+
             // Check for timeout
             if start_time.elapsed() > Duration::from_secs(30) {
                 return Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
-                    "Timed out while refreshing stories"
+                    "Timed out while refreshing stories",
                 )) as Box<dyn Error + Send + Sync>);
             }
-            
+
             tokio::time::sleep(Duration::from_millis(16)).await;
         }
-        
+
         Ok(())
     }
 
@@ -227,7 +231,7 @@ impl Section {
 
 async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error + Send + Sync>> {
     let client = reqwest::Client::new();
-    
+
     // Fetch story IDs for the selected section
     let ids: Vec<u32> = client
         .get(section.get_api_url())
@@ -240,7 +244,10 @@ async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error + S
     let mut stories = Vec::new();
     for id in ids.iter().take(100) {
         let story: Story = client
-            .get(&format!("https://hacker-news.firebaseio.com/v0/item/{}.json", id))
+            .get(&format!(
+                "https://hacker-news.firebaseio.com/v0/item/{}.json",
+                id
+            ))
             .send()
             .await?
             .json()
@@ -253,12 +260,15 @@ async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error + S
 
 async fn get_claude_summary(text: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
     let client = reqwest::Client::new();
-    
+
     let request = ClaudeRequest {
         model: "claude-3-opus-20240229".to_string(),
         messages: vec![Message {
             role: "user".to_string(),
-            content: format!("Please summarize this Hacker News post concisely:\n\n{}", text),
+            content: format!(
+                "Please summarize this Hacker News post concisely:\n\n{}",
+                text
+            ),
         }],
         max_tokens: 150,
     };
@@ -280,8 +290,8 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Title bar
-            Constraint::Min(0),     // Main content
+            Constraint::Length(3), // Title bar
+            Constraint::Min(0),    // Main content
         ])
         .split(f.size());
 
@@ -293,35 +303,32 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     // Calculate visible area height
     let visible_height = (chunks[1].height as usize).saturating_sub(2); // Subtract 2 for borders
-    
+
     // Ensure the selected story is visible
     app.ensure_story_visible(visible_height);
 
     // Create visible stories slice
-    let visible_stories: Vec<ListItem> = app.stories
+    let visible_stories: Vec<ListItem> = app
+        .stories
         .iter()
         .enumerate()
         .skip(app.scroll_offset)
         .take(visible_height)
         .map(|(i, story)| {
-            let content = Line::from(vec![
-                Span::raw(format!(
-                    "{:2}. {} [{}] ({})",
-                    i + 1,
-                    story.title,
-                    story.score,
-                    story.by
-                ))
-            ]);
-            ListItem::new(content).style(
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(if i == app.selected_index {
-                        Modifier::REVERSED
-                    } else {
-                        Modifier::empty()
-                    }),
-            )
+            let content = Line::from(vec![Span::raw(format!(
+                "{:2}. {} [{}] ({})",
+                i + 1,
+                story.title,
+                story.score,
+                story.by
+            ))]);
+            ListItem::new(content).style(Style::default().fg(Color::Green).add_modifier(
+                if i == app.selected_index {
+                    Modifier::REVERSED
+                } else {
+                    Modifier::empty()
+                },
+            ))
         })
         .collect();
 
@@ -344,27 +351,24 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
 fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &App) {
     // Create a full-screen clear overlay
-    let overlay = Block::default()
-        .style(Style::default().bg(Color::Black));
+    let overlay = Block::default().style(Style::default().bg(Color::Black));
     f.render_widget(overlay, f.size());
 
     // Create the menu area
     let area = centered_rect(30, 40, f.size());
-    
+
     let menu_items = vec!["Summarize this post", "Open in browser", "Close menu"];
     let items: Vec<ListItem> = menu_items
         .iter()
         .enumerate()
         .map(|(i, &item)| {
-            ListItem::new(item).style(
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(if i == app.menu_index {
-                        Modifier::REVERSED
-                    } else {
-                        Modifier::empty()
-                    }),
-            )
+            ListItem::new(item).style(Style::default().fg(Color::Green).add_modifier(
+                if i == app.menu_index {
+                    Modifier::REVERSED
+                } else {
+                    Modifier::empty()
+                },
+            ))
         })
         .collect();
 
@@ -377,9 +381,13 @@ fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &App) {
 
 fn draw_summary<B: Backend>(f: &mut Frame<B>, summary: &str) {
     let area = centered_rect(80, 60, f.size());
-    
+
     let summary_widget = Paragraph::new(summary)
-        .block(Block::default().borders(Borders::ALL).title("Claude Summary"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Claude Summary"),
+        )
         .style(Style::default().fg(Color::Green))
         .wrap(ratatui::widgets::Wrap { trim: true });
 
@@ -417,12 +425,12 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     // Create app state
     let mut app = App::new();
-    
+
     // Initial story fetch with loading screen
     if let Err(e) = app.refresh_stories(&mut terminal).await {
         app.set_status_message(format!("Failed to load stories: {}", e));
     }
-    
+
     // Main event loop
     loop {
         terminal.draw(|f| draw_ui(f, &mut app))?;
@@ -438,19 +446,19 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                         if let Err(e) = app.refresh_stories(&mut terminal).await {
                             app.set_status_message(format!("Refresh failed: {}", e));
                         }
-                    },
+                    }
                     KeyCode::Char('o') => {
                         app.show_menu = true;
                         app.mode = Mode::Menu;
                         app.menu_index = 0;
-                    },
+                    }
                     _ => {}
                 },
                 Mode::Menu => match key.code {
                     KeyCode::Esc => {
                         app.show_menu = false;
                         app.mode = Mode::Normal;
-                    },
+                    }
                     KeyCode::Enter => {
                         match app.menu_index {
                             0 => {
@@ -463,35 +471,38 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                                             app.mode = Mode::Summary;
                                         }
                                         Err(e) => {
-                                            app.set_status_message(format!("Failed to get summary: {}", e));
+                                            app.set_status_message(format!(
+                                                "Failed to get summary: {}",
+                                                e
+                                            ));
                                         }
                                     }
                                 }
-                            },
+                            }
                             1 => {
                                 app.open_current_story();
                                 app.show_menu = false;
                                 app.mode = Mode::Normal;
-                            },
+                            }
                             _ => {
                                 app.show_menu = false;
                                 app.mode = Mode::Normal;
                             }
                         }
-                    },
+                    }
                     KeyCode::Char('j') | KeyCode::Down => {
                         app.menu_index = (app.menu_index + 1) % 3;
-                    },
+                    }
                     KeyCode::Char('k') | KeyCode::Up => {
                         app.menu_index = app.menu_index.checked_sub(1).unwrap_or(2);
-                    },
+                    }
                     _ => {}
                 },
                 Mode::Summary => match key.code {
                     KeyCode::Esc => {
                         app.claude_summary = None;
                         app.mode = Mode::Normal;
-                    },
+                    }
                     _ => {}
                 },
             }
