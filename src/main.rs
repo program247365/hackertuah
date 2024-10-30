@@ -2,7 +2,7 @@ use std::error::Error;
 use std::io;
 use std::time::Duration;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -10,7 +10,7 @@ use ratatui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::{Span, Spans, Line},
+    text::{Span, Line},
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame, Terminal,
 };
@@ -18,6 +18,8 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use tokio;
 use open; // Added for browser openin
+mod loading_screen;
+use loading_screen::MatrixRain;
 
 // Hacker News API types
 #[derive(Debug, Deserialize)]
@@ -46,6 +48,7 @@ struct App {
     claude_summary: Option<String>,
     status_message: Option<(String, std::time::Instant)>, // Add this line/
     current_section: Section,  // Add this line
+    scroll_offset: usize,  // Add this line
 }
 
 #[derive(PartialEq)]
@@ -67,6 +70,7 @@ impl App {
             claude_summary: None,
             status_message: None,
             current_section: Section::Top,  // Add this line
+            scroll_offset: 0,  // Add this line
         }
     }
 
@@ -105,11 +109,77 @@ impl App {
         }
     }
 
-    async fn refresh_stories(&mut self) -> Result<(), Box<dyn Error>> {
-        self.stories = fetch_stories(self.current_section).await?;
-        self.selected_index = 0;
-        self.set_status_message(format!("Refreshed {} stories", self.current_section.as_str()));
+    async fn refresh_stories(&mut self, terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<(), Box<dyn Error + Send + Sync>> {
+        // Create loading animation
+        let mut matrix_rain = MatrixRain::new(terminal.size()?.width as usize);
+        
+        // Clone the section before moving it into the spawned task
+        let section = self.current_section;
+        
+        // Spawn the story fetching task
+        let stories_future = tokio::spawn(async move {
+            fetch_stories(section).await
+        });
+        
+        let start_time = std::time::Instant::now();
+        
+        loop {
+            terminal.draw(|f| matrix_rain.draw(f, f.size()))?;
+            matrix_rain.update();
+            
+            // Check for quit
+            if event::poll(Duration::from_millis(50))? {
+                if let Event::Key(key) = event::read()? {
+                    if key.code == KeyCode::Char('q') {
+                        return Ok(());
+                    }
+                }
+            }
+            
+            // Check if stories are ready
+            if stories_future.is_finished() {
+                match stories_future.await {
+                    Ok(Ok(stories)) => {
+                        self.stories = stories;
+                        self.selected_index = 0;
+                        self.set_status_message(format!("Refreshed {} stories", section.as_str()));
+                        break;
+                    }
+                    Ok(Err(e)) => {
+                        return Err(Box::new(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("Failed to fetch stories: {}", e)
+                        )) as Box<dyn Error + Send + Sync>);
+                    }
+                    Err(e) => {
+                        return Err(Box::new(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("Task join error: {}", e)
+                        )) as Box<dyn Error + Send + Sync>);
+                    }
+                }
+            }
+            
+            // Check for timeout
+            if start_time.elapsed() > Duration::from_secs(30) {
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Timed out while refreshing stories"
+                )) as Box<dyn Error + Send + Sync>);
+            }
+            
+            tokio::time::sleep(Duration::from_millis(16)).await;
+        }
+        
         Ok(())
+    }
+
+    fn ensure_story_visible(&mut self, height: usize) {
+        if self.selected_index < self.scroll_offset {
+            self.scroll_offset = self.selected_index;
+        } else if self.selected_index >= self.scroll_offset + height {
+            self.scroll_offset = self.selected_index - height + 1;
+        }
     }
 }
 
@@ -155,7 +225,7 @@ impl Section {
     }
 }
 
-async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error>> {
+async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error + Send + Sync>> {
     let client = reqwest::Client::new();
     
     // Fetch story IDs for the selected section
@@ -166,9 +236,9 @@ async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error>> {
         .json()
         .await?;
 
-    // Fetch first 30 stories
+    // Fetch first 100 stories
     let mut stories = Vec::new();
-    for id in ids.iter().take(30) {
+    for id in ids.iter().take(100) {
         let story: Story = client
             .get(&format!("https://hacker-news.firebaseio.com/v0/item/{}.json", id))
             .send()
@@ -181,7 +251,7 @@ async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error>> {
     Ok(stories)
 }
 
-async fn get_claude_summary(text: &str) -> Result<String, Box<dyn Error>> {
+async fn get_claude_summary(text: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
     let client = reqwest::Client::new();
     
     let request = ClaudeRequest {
@@ -205,7 +275,7 @@ async fn get_claude_summary(text: &str) -> Result<String, Box<dyn Error>> {
     Ok(response.text().await?)
 }
 
-fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &App) {
+fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     // Create the layout
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -221,11 +291,18 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(title, chunks[0]);
 
-    // Main content area
-    let stories: Vec<ListItem> = app
-        .stories
+    // Calculate visible area height
+    let visible_height = (chunks[1].height as usize).saturating_sub(2); // Subtract 2 for borders
+    
+    // Ensure the selected story is visible
+    app.ensure_story_visible(visible_height);
+
+    // Create visible stories slice
+    let visible_stories: Vec<ListItem> = app.stories
         .iter()
         .enumerate()
+        .skip(app.scroll_offset)
+        .take(visible_height)
         .map(|(i, story)| {
             let content = Line::from(vec![
                 Span::raw(format!(
@@ -248,7 +325,7 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         })
         .collect();
 
-    let stories_list = List::new(stories)
+    let stories_list = List::new(visible_stories)
         .block(Block::default().borders(Borders::ALL))
         .style(Style::default().fg(Color::Green));
 
@@ -330,7 +407,7 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -341,12 +418,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create app state
     let mut app = App::new();
     
-    // Fetch initial stories
-    app.stories = fetch_stories(app.current_section).await?;
-
+    // Initial story fetch with loading screen
+    if let Err(e) = app.refresh_stories(&mut terminal).await {
+        app.set_status_message(format!("Failed to load stories: {}", e));
+    }
+    
     // Main event loop
     loop {
-        terminal.draw(|f| draw_ui(f, &app))?;
+        terminal.draw(|f| draw_ui(f, &mut app))?;
 
         if let Event::Key(key) = event::read()? {
             match app.mode {
@@ -354,9 +433,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     KeyCode::Char('q') => break,
                     KeyCode::Char('j') | KeyCode::Down => app.next_story(),
                     KeyCode::Char('k') | KeyCode::Up => app.previous_story(),
-                    KeyCode::Enter => app.open_current_story(),  // Added Enter handling
+                    KeyCode::Enter => app.open_current_story(),
                     KeyCode::Char('r') => {
-                        if let Err(e) = app.refresh_stories().await {
+                        if let Err(e) = app.refresh_stories(&mut terminal).await {
                             app.set_status_message(format!("Refresh failed: {}", e));
                         }
                     },
@@ -378,8 +457,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 // Get Claude summary
                                 if let Some(story) = app.stories.get(app.selected_index) {
                                     let text = story.text.clone().unwrap_or_default();
-                                    app.claude_summary = Some(get_claude_summary(&text).await?);
-                                    app.mode = Mode::Summary;
+                                    match get_claude_summary(&text).await {
+                                        Ok(summary) => {
+                                            app.claude_summary = Some(summary);
+                                            app.mode = Mode::Summary;
+                                        }
+                                        Err(e) => {
+                                            app.set_status_message(format!("Failed to get summary: {}", e));
+                                        }
+                                    }
                                 }
                             },
                             1 => {
