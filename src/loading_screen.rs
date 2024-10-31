@@ -1,7 +1,7 @@
 use rand::{thread_rng, Rng};
 use ratatui::{
     backend::Backend,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
@@ -101,13 +101,14 @@ impl MatrixRain {
 
         let loading_block = Paragraph::new(loading_text)
             .style(Style::default().fg(Color::Green))
+            .alignment(Alignment::Center)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(Color::Green)),
             );
 
-        let loading_area = centered_rect(20, 10, area);
+        let loading_area = centered_rect(10, 8, area);
         f.render_widget(loading_block, loading_area);
     }
 }
