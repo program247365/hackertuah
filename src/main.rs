@@ -6,7 +6,7 @@ use crossterm::{
 use open;
 use ratatui::{
     backend::{Backend, CrosstermBackend},
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
@@ -48,7 +48,8 @@ struct App {
     claude_summary: Option<String>,
     status_message: Option<(String, std::time::Instant)>, // Add this line/
     current_section: Section,                             // Add this line
-    scroll_offset: usize,                                 // Add this line
+    scroll_offset: usize,
+    app_name: String,
 }
 
 #[derive(PartialEq)]
@@ -71,6 +72,7 @@ impl App {
             status_message: None,
             current_section: Section::Top, // Add this line
             scroll_offset: 0,              // Add this line
+            app_name: "Hackertuah News".to_string(),
         }
     }
 
@@ -296,8 +298,9 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .split(f.size());
 
     // Title bar
-    let title = Paragraph::new("Hacker News TUI")
+    let title = Paragraph::new(app.app_name.clone())
         .style(Style::default().fg(Color::Green))
+        .alignment(Alignment::Center)
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(title, chunks[0]);
 
@@ -351,7 +354,7 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
 fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &App) {
     // Create a full-screen clear overlay
-    let overlay = Block::default().style(Style::default().bg(Color::Black));
+    let overlay = Block::default().style(Style::default());
     f.render_widget(overlay, f.size());
 
     // Create the menu area
@@ -374,7 +377,8 @@ fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &App) {
 
     let menu = List::new(items)
         .block(Block::default().borders(Borders::ALL).title("Options"))
-        .style(Style::default().fg(Color::Green));
+        .style(Style::default().fg(Color::Green))
+        .highlight_style(Style::default().bg(Color::Green));
 
     f.render_widget(menu, area);
 }
@@ -388,7 +392,7 @@ fn draw_summary<B: Backend>(f: &mut Frame<B>, summary: &str) {
                 .borders(Borders::ALL)
                 .title("Claude Summary"),
         )
-        .style(Style::default().fg(Color::Green))
+        .style(Style::default().fg(Color::Green).bg(Color::Reset))
         .wrap(ratatui::widgets::Wrap { trim: true });
 
     f.render_widget(summary_widget, area);
