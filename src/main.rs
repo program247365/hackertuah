@@ -358,9 +358,9 @@ fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &App) {
     f.render_widget(overlay, f.size());
 
     // Create the menu area
-    let area = centered_rect(30, 40, f.size());
+    let area = centered_rect(15, 12, f.size());
 
-    let menu_items = vec!["Summarize this post", "Open in browser", "Close menu"];
+    let menu_items = vec!["Summarize this post...", "Open this post.....", "Close this menu"];
     let items: Vec<ListItem> = menu_items
         .iter()
         .enumerate()
