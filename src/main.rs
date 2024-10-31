@@ -288,11 +288,11 @@ async fn get_claude_summary(text: &str) -> Result<String, Box<dyn Error + Send +
 }
 
 fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
-    // Create the layout
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3), // Title bar
+            Constraint::Length(3), // Section menu
             Constraint::Min(0),    // Main content
         ])
         .split(f.size());
@@ -304,8 +304,33 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(title, chunks[0]);
 
+    // Section menu
+    let sections = vec!["Top", "Ask", "Show", "Jobs"];
+    let section_spans: Vec<Span> = sections
+        .iter()
+        .map(|&section| {
+            if section == app.current_section.as_str() {
+                Span::styled(
+                    format!(" {} ", section),
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::REVERSED),
+                )
+            } else {
+                Span::styled(format!(" {} ", section), Style::default().fg(Color::Green))
+            }
+        })
+        .collect();
+
+    let section_menu = Paragraph::new(Line::from(section_spans))
+        .style(Style::default().fg(Color::Green))
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::ALL));
+    f.render_widget(section_menu, chunks[1]);
+
+    // Stories list (main content)
     // Calculate visible area height
-    let visible_height = (chunks[1].height as usize).saturating_sub(2); // Subtract 2 for borders
+    let visible_height = (chunks[2].height as usize).saturating_sub(2); // Subtract 2 for borders
 
     // Ensure the selected story is visible
     app.ensure_story_visible(visible_height);
@@ -339,7 +364,7 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .block(Block::default().borders(Borders::ALL))
         .style(Style::default().fg(Color::Green));
 
-    f.render_widget(stories_list, chunks[1]);
+    f.render_widget(stories_list, chunks[2]);
 
     // Draw menu if active
     if app.show_menu {
@@ -360,7 +385,11 @@ fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &App) {
     // Create the menu area
     let area = centered_rect(15, 12, f.size());
 
-    let menu_items = vec!["Summarize this post...", "Open this post.....", "Close this menu"];
+    let menu_items = vec![
+        "Summarize this post...",
+        "Open this post.....",
+        "Close this menu",
+    ];
     let items: Vec<ListItem> = menu_items
         .iter()
         .enumerate()
@@ -455,6 +484,28 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                         app.show_menu = true;
                         app.mode = Mode::Menu;
                         app.menu_index = 0;
+                    }
+                    KeyCode::Char('h') => {
+                        app.current_section = match app.current_section {
+                            Section::Top => Section::Jobs,
+                            Section::Jobs => Section::Show,
+                            Section::Show => Section::Ask,
+                            Section::Ask => Section::Top,
+                        };
+                        if let Err(e) = app.refresh_stories(&mut terminal).await {
+                            app.set_status_message(format!("Failed to load stories: {}", e));
+                        }
+                    }
+                    KeyCode::Char('l') => {
+                        app.current_section = match app.current_section {
+                            Section::Top => Section::Ask,
+                            Section::Ask => Section::Show,
+                            Section::Show => Section::Jobs,
+                            Section::Jobs => Section::Top,
+                        };
+                        if let Err(e) = app.refresh_stories(&mut terminal).await {
+                            app.set_status_message(format!("Failed to load stories: {}", e));
+                        }
                     }
                     _ => {}
                 },
