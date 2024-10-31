@@ -51,8 +51,8 @@ impl MatrixRain {
         // Update positions
         for i in 0..self.positions.len() {
             self.positions[i] += self.speeds[i] * elapsed * 10.0;
-            if self.positions[i] > 20.0 {
-                self.positions[i] = -20.0;
+            if self.positions[i] > 100.0 {
+                self.positions[i] = -100.0;
             }
         }
 
