@@ -30,11 +30,6 @@ struct Story {
     text: Option<String>,
     by: String,
     score: i32,
-    descendants: Option<i32>,
-    #[serde(rename = "type")]
-    story_type: String,
-    time: u64,
-    kids: Option<Vec<u32>>,
 }
 
 // App state
@@ -43,7 +38,6 @@ struct App {
     selected_index: usize,
     show_menu: bool,
     menu_index: usize,
-    story_content: Option<String>,
     mode: Mode,
     claude_summary: Option<String>,
     status_message: Option<(String, std::time::Instant)>, // Add this line/
@@ -66,7 +60,6 @@ impl App {
             selected_index: 0,
             show_menu: false,
             menu_index: 0,
-            story_content: None,
             mode: Mode::Normal,
             claude_summary: None,
             status_message: None,
