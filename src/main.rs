@@ -22,7 +22,7 @@ mod loading_screen;
 use loading_screen::MatrixRain;
 
 // Hacker News API types
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct Story {
     id: u32,
     title: String,
@@ -44,6 +44,7 @@ struct App {
     current_section: Section,                             // Add this line
     scroll_offset: usize,
     app_name: String,
+    cached_stories: std::collections::HashMap<Section, Vec<Story>>,
 }
 
 #[derive(PartialEq)]
@@ -66,6 +67,7 @@ impl App {
             current_section: Section::Top, // Add this line
             scroll_offset: 0,              // Add this line
             app_name: "Hackertuah News".to_string(),
+            cached_stories: std::collections::HashMap::new(),
         }
     }
 
@@ -107,11 +109,91 @@ impl App {
         }
     }
 
+    async fn load_all_sections(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let mut matrix_rain = MatrixRain::new(terminal.size()?.width as usize);
+        let sections = vec![Section::Top, Section::Ask, Section::Show, Section::Jobs];
+
+        // Create futures for all sections
+        let futures: Vec<_> = sections
+            .into_iter()
+            .map(|section| tokio::spawn(async move { (section, fetch_stories(section).await) }))
+            .collect();
+
+        let start_time = std::time::Instant::now();
+
+        loop {
+            terminal.draw(|f| matrix_rain.draw(f, f.size()))?;
+            matrix_rain.update();
+
+            // Check for quit
+            if event::poll(Duration::from_millis(50))? {
+                if let Event::Key(key) = event::read()? {
+                    if key.code == KeyCode::Char('q') {
+                        return Ok(());
+                    }
+                }
+            }
+
+            // Check if all futures are complete
+            let all_complete = futures.iter().all(|f| f.is_finished());
+
+            if all_complete {
+                for future in futures {
+                    match future.await {
+                        Ok((section, Ok(stories))) => {
+                            self.cached_stories.insert(section, stories);
+                        }
+                        Ok((section, Err(e))) => {
+                            self.set_status_message(format!(
+                                "Failed to load {}: {}",
+                                section.as_str(),
+                                e
+                            ));
+                        }
+                        Err(e) => {
+                            self.set_status_message(format!("Task error: {}", e));
+                        }
+                    }
+                }
+
+                // Set initial stories from cache
+                if let Some(stories) = self.cached_stories.get(&self.current_section) {
+                    self.stories = stories.clone();
+                }
+
+                break;
+            }
+
+            // Check for timeout
+            if start_time.elapsed() > Duration::from_secs(30) {
+                return Err("Timed out while loading sections".into());
+            }
+
+            tokio::time::sleep(Duration::from_millis(16)).await;
+        }
+
+        Ok(())
+    }
+
     async fn refresh_stories(
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
-        // Create loading animation
+        // If we're just switching sections, use cached data
+        if let Some(cached) = self.cached_stories.get(&self.current_section) {
+            self.stories = cached.clone();
+            self.selected_index = 0;
+            self.set_status_message(format!(
+                "Switched to {} stories",
+                self.current_section.as_str()
+            ));
+            return Ok(());
+        }
+
+        // Otherwise, fetch new data (existing implementation)
         let mut matrix_rain = MatrixRain::new(terminal.size()?.width as usize);
 
         // Clone the section before moving it into the spawned task
@@ -196,7 +278,7 @@ struct Message {
     content: String,
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 enum Section {
     Top,
     Ask,
@@ -452,9 +534,9 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Create app state
     let mut app = App::new();
 
-    // Initial story fetch with loading screen
-    if let Err(e) = app.refresh_stories(&mut terminal).await {
-        app.set_status_message(format!("Failed to load stories: {}", e));
+    // Initial load of all sections
+    if let Err(e) = app.load_all_sections(&mut terminal).await {
+        app.set_status_message(format!("Failed to load sections: {}", e));
     }
 
     // Main event loop
@@ -467,6 +549,19 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                     KeyCode::Char('q') => break,
                     KeyCode::Char('j') | KeyCode::Down => app.next_story(),
                     KeyCode::Char('k') | KeyCode::Up => app.previous_story(),
+                    KeyCode::Char('R') => {
+                        if let Err(e) = app.load_all_sections(&mut terminal).await {
+                            app.set_status_message(format!(
+                                "Failed to refresh all sections: {}",
+                                e
+                            ));
+                        }
+                    }
+                    KeyCode::Char('r') => {
+                        if let Err(e) = app.refresh_stories(&mut terminal).await {
+                            app.set_status_message(format!("Refresh failed: {}", e));
+                        }
+                    }
                     KeyCode::Char('T') => {
                         if app.current_section != Section::Top {
                             app.current_section = Section::Top;
@@ -474,7 +569,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                                 app.set_status_message(format!("Failed to load stories: {}", e));
                             }
                         }
-                    },
+                    }
                     KeyCode::Char('A') => {
                         if app.current_section != Section::Ask {
                             app.current_section = Section::Ask;
@@ -482,7 +577,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                                 app.set_status_message(format!("Failed to load stories: {}", e));
                             }
                         }
-                    },
+                    }
                     KeyCode::Char('S') => {
                         if app.current_section != Section::Show {
                             app.current_section = Section::Show;
@@ -490,7 +585,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                                 app.set_status_message(format!("Failed to load stories: {}", e));
                             }
                         }
-                    },
+                    }
                     KeyCode::Char('J') => {
                         if app.current_section != Section::Jobs {
                             app.current_section = Section::Jobs;
@@ -498,13 +593,8 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                                 app.set_status_message(format!("Failed to load stories: {}", e));
                             }
                         }
-                    },
-                    KeyCode::Enter => app.open_current_story(),
-                    KeyCode::Char('r') => {
-                        if let Err(e) = app.refresh_stories(&mut terminal).await {
-                            app.set_status_message(format!("Refresh failed: {}", e));
-                        }
                     }
+                    KeyCode::Enter => app.open_current_story(),
                     KeyCode::Char('o') => {
                         app.show_menu = true;
                         app.mode = Mode::Menu;
