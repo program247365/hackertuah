@@ -467,6 +467,38 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                     KeyCode::Char('q') => break,
                     KeyCode::Char('j') | KeyCode::Down => app.next_story(),
                     KeyCode::Char('k') | KeyCode::Up => app.previous_story(),
+                    KeyCode::Char('T') => {
+                        if app.current_section != Section::Top {
+                            app.current_section = Section::Top;
+                            if let Err(e) = app.refresh_stories(&mut terminal).await {
+                                app.set_status_message(format!("Failed to load stories: {}", e));
+                            }
+                        }
+                    },
+                    KeyCode::Char('A') => {
+                        if app.current_section != Section::Ask {
+                            app.current_section = Section::Ask;
+                            if let Err(e) = app.refresh_stories(&mut terminal).await {
+                                app.set_status_message(format!("Failed to load stories: {}", e));
+                            }
+                        }
+                    },
+                    KeyCode::Char('S') => {
+                        if app.current_section != Section::Show {
+                            app.current_section = Section::Show;
+                            if let Err(e) = app.refresh_stories(&mut terminal).await {
+                                app.set_status_message(format!("Failed to load stories: {}", e));
+                            }
+                        }
+                    },
+                    KeyCode::Char('J') => {
+                        if app.current_section != Section::Jobs {
+                            app.current_section = Section::Jobs;
+                            if let Err(e) = app.refresh_stories(&mut terminal).await {
+                                app.set_status_message(format!("Failed to load stories: {}", e));
+                            }
+                        }
+                    },
                     KeyCode::Enter => app.open_current_story(),
                     KeyCode::Char('r') => {
                         if let Err(e) = app.refresh_stories(&mut terminal).await {

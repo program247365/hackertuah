@@ -49,6 +49,11 @@ cargo run
 - `o`: Open options menu
 - `q`: Quit application
 - `Esc`: Close menus/summaries
+- `T`: Switch to Top stories
+- `A`: Switch to Ask HN
+- `S`: Switch to Show HN
+- `J`: Switch to Jobs
+- `h`/`l`: Navigate between sections
 
 ### Options Menu
 
