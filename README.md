@@ -54,6 +54,8 @@ cargo run
 - `S`: Switch to Show HN
 - `J`: Switch to Jobs
 - `h`/`l`: Navigate between sections
+- `r`: Refresh current section
+- `R`: Refresh all sections
 
 ### Options Menu
 
