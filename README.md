@@ -15,6 +15,12 @@ A terminal-based user interface for browsing Hacker News with Vim-style navigati
 
 ## Installation
 
+### Cargo
+
+```bash
+cargo install --git https://github.com/program247365/hackertuah
+```
+
 ### Prerequisites
 
 - Rust and Cargo (Latest stable version)
@@ -24,7 +30,7 @@ A terminal-based user interface for browsing Hacker News with Vim-style navigati
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/hackernews-tui
+git clone https://github.com/program247365/hackertuah
 cd hackernews-tui
 ```
 
