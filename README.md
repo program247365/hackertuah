@@ -22,12 +22,56 @@ cargo install --git https://github.com/program247365/hackertuah
 
 ## Features
 
-- 🚀 Browse top Hacker News stories in your terminal
-- ⌨️ Vim-style keyboard navigation
-- 🤖 Claude AI integration for story summarization
-- 🌐 Open stories directly in your default browser
-- 💚 Classic green-on-black terminal aesthetic
-- 🎯 Minimalist, distraction-free interface
+- 🚀 **Browse** top Hacker News stories in your terminal
+- ⌨️ **Vim-style navigation** (j/k, arrows, etc.)
+- 🤖 **Claude AI integration** for story summarization
+- 🌐 **Open stories** directly in your default browser
+- 💚 **Classic green-on-black** terminal aesthetic
+- 🎯 **Minimalist, distraction-free interface**
+- 🔍 **Instant search/filter**: Press `/` or use the command palette to filter stories as you type
+- 🧑‍💻 **Command Palette**: Press `Ctrl+K` to access all commands, including search, section switching, and more
+- 📝 **Options menu** for each story (summarize, open, close)
+- 🏷️ **Section switching**: Top, Ask, Show, Jobs
+- 🛠️ **Easy install & run** with Cargo
+
+## Command Palette 🧑‍💻
+
+Press `Ctrl+K` to open the command palette:
+
+- 🔎 **Search for commands** as you type
+- ⚡ **Quickly switch sections** (Top, Ask, Show, Jobs)
+- 🔄 **Refresh** current or all sections
+- 🔍 **Activate search mode** (type 'search' and press Enter)
+- 🌐 **Open in browser**, 💬 **Open comments**, 🤖 **Summarize**
+- ❌ **Quit** the app
+- ⬆️⬇️ Navigate with Up/Down arrows, `Esc` to close
+
+## Search 🔍
+
+- Press `/` to start searching, or open the command palette and type 'search'
+- Type to filter stories by title in real-time
+- Use Up/Down arrows to navigate filtered results
+- Press Enter to open the selected story, or Esc to cancel
+- Works across all sections (Top, Ask, Show, Jobs)
+
+## Keyboard Controls
+
+- `j` or `↓`: Move down
+- `k` or `↑`: Move up
+- `Enter`: Open selected story in default browser
+- `C`: Open comments for selected story
+- `o`: Open options menu
+- `q`: Quit application
+- `Esc`: Close menus/summaries
+- `T`: Switch to Top stories
+- `A`: Switch to Ask HN
+- `S`: Switch to Show HN
+- `J`: Switch to Jobs
+- `h`/`l`: Navigate between sections
+- `r`: Refresh current section
+- `R`: Refresh all sections
+- `Ctrl+K`: Open command palette (search and execute commands)
+- `/`: Start search (type to filter stories)
 
 ## Installation
 
@@ -168,14 +212,3 @@ src/
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### Search
-
-Press `/` to start searching:
-- Type to filter stories by title
-- Results update in real-time
-- Use Up/Down arrows to navigate filtered results
-- Press Enter to select or Esc to cancel
-- Search works across all sections (Top, Ask, Show, Jobs)
-
-You can also activate search from the command palette (Ctrl+K → type 'search').
