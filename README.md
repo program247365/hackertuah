@@ -64,6 +64,7 @@ cargo run
 - `r`: Refresh current section
 - `R`: Refresh all sections
 - `Ctrl+K`: Open command palette (search and execute commands)
+- `/`: Start search (type to filter stories)
 
 ### Command Palette
 
@@ -75,10 +76,11 @@ Press `Ctrl+K` to open the command palette, which provides:
 - Navigate with Up/Down arrows
 - Close with Esc
 
-Available commands include:
+Available commands now include:
 - Open in Browser
 - Open Comments
 - Summarize
+- Search (activate search/filter mode)
 - Switch to Top/Ask/Show/Jobs
 - Refresh/Refresh All
 - Quit
@@ -150,3 +152,14 @@ src/
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Search
+
+Press `/` to start searching:
+- Type to filter stories by title
+- Results update in real-time
+- Use Up/Down arrows to navigate filtered results
+- Press Enter to select or Esc to cancel
+- Search works across all sections (Top, Ask, Show, Jobs)
+
+You can also activate search from the command palette (Ctrl+K → type 'search').

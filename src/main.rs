@@ -40,12 +40,14 @@ struct App {
     menu_index: usize,
     mode: Mode,
     claude_summary: Option<String>,
-    status_message: Option<(String, std::time::Instant)>, // Add this line/
-    current_section: Section,                             // Add this line
+    status_message: Option<(String, std::time::Instant)>,
+    current_section: Section,
     scroll_offset: usize,
     app_name: String,
     cached_stories: std::collections::HashMap<Section, Vec<Story>>,
     command_palette: CommandPalette,
+    search_query: String,
+    filtered_stories: Vec<usize>,
 }
 
 #[derive(PartialEq)]
@@ -54,6 +56,7 @@ enum Mode {
     Menu,
     Summary,
     CommandPalette,
+    Search,
 }
 
 struct Command {
@@ -76,85 +79,95 @@ impl CommandPalette {
                 Command {
                     name: "Open in Browser".to_string(),
                     description: "Open the selected story in your default browser".to_string(),
-                    action: |app| {
-                        app.open_current_story();
+                    action: |_app| {
+                        _app.open_current_story();
                         Ok(())
                     },
                 },
                 Command {
                     name: "Open Comments".to_string(),
                     description: "Open the comments for the selected story".to_string(),
-                    action: |app| {
-                        app.open_comments();
+                    action: |_app| {
+                        _app.open_comments();
                         Ok(())
                     },
                 },
                 Command {
                     name: "Summarize".to_string(),
                     description: "Get an AI summary of the selected story".to_string(),
-                    action: |app| {
-                        app.show_menu = true;
-                        app.mode = Mode::Menu;
-                        app.menu_index = 0;
+                    action: |_app| {
+                        _app.show_menu = true;
+                        _app.mode = Mode::Menu;
+                        _app.menu_index = 0;
+                        Ok(())
+                    },
+                },
+                Command {
+                    name: "Search".to_string(),
+                    description: "Filter stories by text".to_string(),
+                    action: |_app| {
+                        _app.mode = Mode::Search;
+                        _app.search_query.clear();
+                        _app.filtered_stories = (0.._app.stories.len()).collect();
                         Ok(())
                     },
                 },
                 Command {
                     name: "Switch to Top".to_string(),
                     description: "Switch to Top stories section".to_string(),
-                    action: |app| {
-                        app.current_section = Section::Top;
-                        app.set_status_message("Switching to Top stories...".to_string());
+                    action: |_app| {
+                        _app.current_section = Section::Top;
+                        _app.set_status_message("Switching to Top stories...".to_string());
                         Ok(())
                     },
                 },
                 Command {
                     name: "Switch to Ask".to_string(),
                     description: "Switch to Ask HN section".to_string(),
-                    action: |app| {
-                        app.current_section = Section::Ask;
-                        app.set_status_message("Switching to Ask HN...".to_string());
+                    action: |_app| {
+                        _app.current_section = Section::Ask;
+                        _app.set_status_message("Switching to Ask HN...".to_string());
                         Ok(())
                     },
                 },
                 Command {
                     name: "Switch to Show".to_string(),
                     description: "Switch to Show HN section".to_string(),
-                    action: |app| {
-                        app.current_section = Section::Show;
-                        app.set_status_message("Switching to Show HN...".to_string());
+                    action: |_app| {
+                        _app.current_section = Section::Show;
+                        _app.set_status_message("Switching to Show HN...".to_string());
                         Ok(())
                     },
                 },
                 Command {
                     name: "Switch to Jobs".to_string(),
                     description: "Switch to Jobs section".to_string(),
-                    action: |app| {
-                        app.current_section = Section::Jobs;
-                        app.set_status_message("Switching to Jobs...".to_string());
+                    action: |_app| {
+                        _app.current_section = Section::Jobs;
+                        _app.set_status_message("Switching to Jobs...".to_string());
                         Ok(())
                     },
                 },
                 Command {
                     name: "Refresh".to_string(),
                     description: "Refresh the current section".to_string(),
-                    action: |app| {
-                        app.set_status_message("Refreshing...".to_string());
+                    action: |_app| {
+                        _app.set_status_message("Refreshing...".to_string());
                         Ok(())
                     },
                 },
                 Command {
                     name: "Refresh All".to_string(),
                     description: "Refresh all sections".to_string(),
-                    action: |app| {
-                        app.set_status_message("Refreshing all sections...".to_string());
+                    action: |_app| {
+                        _app.set_status_message("Refreshing all sections...".to_string());
                         Ok(())
                     },
                 },
                 Command {
                     name: "Quit".to_string(),
                     description: "Exit the application".to_string(),
-                    action: |app| {
+                    action: |_app| {
                         std::process::exit(0);
                     },
                 },
@@ -195,14 +208,6 @@ impl CommandPalette {
         }
     }
 
-    fn execute_selected(&self, app: &mut App) -> Result<(), Box<dyn Error + Send + Sync>> {
-        if let Some(&cmd_idx) = self.filtered_commands.get(self.selected_index) {
-            (self.commands[cmd_idx].action)(app)
-        } else {
-            Ok(())
-        }
-    }
-
     fn get_selected_command(&self) -> Option<&Command> {
         self.filtered_commands
             .get(self.selected_index)
@@ -220,12 +225,20 @@ impl App {
             mode: Mode::Normal,
             claude_summary: None,
             status_message: None,
-            current_section: Section::Top, // Add this line
-            scroll_offset: 0,              // Add this line
+            current_section: Section::Top,
+            scroll_offset: 0,
             app_name: "Hackertuah News".to_string(),
             cached_stories: std::collections::HashMap::new(),
             command_palette: CommandPalette::new(),
+            search_query: String::new(),
+            filtered_stories: Vec::new(),
         }
+    }
+
+    fn set_stories(&mut self, stories: Vec<Story>) {
+        self.stories = stories;
+        self.filtered_stories = (0..self.stories.len()).collect();
+        self.selected_index = 0;
     }
 
     fn next_story(&mut self) {
@@ -328,7 +341,7 @@ impl App {
 
                 // Set initial stories from cache
                 if let Some(stories) = self.cached_stories.get(&self.current_section) {
-                    self.stories = stories.clone();
+                    self.set_stories(stories.clone());
                 }
 
                 break;
@@ -351,8 +364,7 @@ impl App {
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         // If we're just switching sections, use cached data
         if let Some(cached) = self.cached_stories.get(&self.current_section) {
-            self.stories = cached.clone();
-            self.selected_index = 0;
+            self.set_stories(cached.clone());
             self.set_status_message(format!(
                 "Switched to {} stories",
                 self.current_section.as_str()
@@ -388,8 +400,7 @@ impl App {
             if stories_future.is_finished() {
                 match stories_future.await {
                     Ok(Ok(stories)) => {
-                        self.stories = stories;
-                        self.selected_index = 0;
+                        self.set_stories(stories);
                         self.set_status_message(format!("Refreshed {} stories", section.as_str()));
                         break;
                     }
@@ -427,6 +438,25 @@ impl App {
             self.scroll_offset = self.selected_index;
         } else if self.selected_index >= self.scroll_offset + height {
             self.scroll_offset = self.selected_index - height + 1;
+        }
+    }
+
+    fn filter_stories(&mut self) {
+        if self.search_query.is_empty() {
+            self.filtered_stories = (0..self.stories.len()).collect();
+        } else {
+            self.filtered_stories = self.stories
+                .iter()
+                .enumerate()
+                .filter(|(_, story)| {
+                    story.title.to_lowercase().contains(&self.search_query.to_lowercase())
+                })
+                .map(|(i, _)| i)
+                .collect();
+        }
+        // Reset selection to first item if current selection is not in filtered list
+        if !self.filtered_stories.contains(&self.selected_index) {
+            self.selected_index = *self.filtered_stories.first().unwrap_or(&0);
         }
     }
 }
@@ -536,6 +566,7 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             Constraint::Length(3), // Title bar
             Constraint::Length(3), // Section menu
             Constraint::Min(0),    // Main content
+            Constraint::Length(if app.mode == Mode::Search { 3 } else { 0 }), // Search box
         ])
         .split(f.size());
 
@@ -571,16 +602,16 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     f.render_widget(section_menu, chunks[1]);
 
     // Stories list (main content)
-    // Calculate visible area height
-    let visible_height = (chunks[2].height as usize).saturating_sub(2); // Subtract 2 for borders
+    let visible_height = (chunks[2].height as usize).saturating_sub(2);
 
     // Ensure the selected story is visible
     app.ensure_story_visible(visible_height);
 
     // Create visible stories slice
     let visible_stories: Vec<ListItem> = app
-        .stories
+        .filtered_stories
         .iter()
+        .map(|&i| &app.stories[i])
         .enumerate()
         .skip(app.scroll_offset)
         .take(visible_height)
@@ -607,6 +638,17 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .style(Style::default().fg(Color::Green));
 
     f.render_widget(stories_list, chunks[2]);
+
+    // Draw search box if in search mode
+    if app.mode == Mode::Search {
+        let search_input = Paragraph::new(format!("/{}", app.search_query))
+            .style(Style::default().fg(Color::Green))
+            .block(Block::default()
+                .borders(Borders::ALL)
+                .title("Search")
+                .border_style(Style::default().fg(Color::Green)));
+        f.render_widget(search_input, chunks[3]);
+    }
 
     // Draw menu if active
     if app.show_menu {
@@ -763,6 +805,11 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                         app.mode = Mode::CommandPalette;
                         app.command_palette.search_query.clear();
                         app.command_palette.filter_commands();
+                    }
+                    KeyCode::Char('/') => {
+                        app.mode = Mode::Search;
+                        app.search_query.clear();
+                        app.filtered_stories = (0..app.stories.len()).collect();
                     }
                     KeyCode::Char('j') | KeyCode::Down => app.next_story(),
                     KeyCode::Char('k') | KeyCode::Up => app.previous_story(),
@@ -931,6 +978,10 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                                         app.set_status_message(format!("Failed to load stories: {}", e));
                                     }
                                 }
+                                "Search" => {
+                                    let _ = (cmd.action)(&mut app);
+                                    // Command palette closes, search mode opens
+                                }
                                 _ => {
                                     if let Err(e) = (cmd.action)(&mut app) {
                                         app.set_status_message(format!("Error executing command: {}", e));
@@ -938,8 +989,47 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                                 }
                             }
                         }
-                        app.mode = Mode::Normal;
+                        if app.mode != Mode::Search {
+                            app.mode = Mode::Normal;
+                        }
                         app.command_palette.search_query.clear();
+                    }
+                    _ => {}
+                },
+                Mode::Search => match key.code {
+                    KeyCode::Esc => {
+                        app.mode = Mode::Normal;
+                        app.search_query.clear();
+                        app.filtered_stories = (0..app.stories.len()).collect();
+                    }
+                    KeyCode::Char(c) => {
+                        app.search_query.push(c);
+                        app.filter_stories();
+                    }
+                    KeyCode::Backspace => {
+                        app.search_query.pop();
+                        app.filter_stories();
+                    }
+                    KeyCode::Enter => {
+                        // Open the selected (filtered) story in the browser
+                        if let Some(&story_idx) = app.filtered_stories.get(app.selected_index) {
+                            app.selected_index = story_idx;
+                            app.open_current_story();
+                        }
+                        app.mode = Mode::Normal;
+                        app.search_query.clear();
+                        app.filtered_stories = (0..app.stories.len()).collect();
+                    }
+                    KeyCode::Down => {
+                        if !app.filtered_stories.is_empty() {
+                            app.selected_index = (app.selected_index + 1) % app.filtered_stories.len();
+                        }
+                    }
+                    KeyCode::Up => {
+                        if !app.filtered_stories.is_empty() {
+                            app.selected_index = app.selected_index.checked_sub(1)
+                                .unwrap_or(app.filtered_stories.len() - 1);
+                        }
                     }
                     _ => {}
                 },
