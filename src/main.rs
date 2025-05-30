@@ -9,7 +9,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Frame, Terminal,
 };
 use reqwest;
@@ -45,6 +45,7 @@ struct App {
     scroll_offset: usize,
     app_name: String,
     cached_stories: std::collections::HashMap<Section, Vec<Story>>,
+    command_palette: CommandPalette,
 }
 
 #[derive(PartialEq)]
@@ -52,6 +53,161 @@ enum Mode {
     Normal,
     Menu,
     Summary,
+    CommandPalette,
+}
+
+struct Command {
+    name: String,
+    description: String,
+    action: fn(&mut App) -> Result<(), Box<dyn Error + Send + Sync>>,
+}
+
+struct CommandPalette {
+    commands: Vec<Command>,
+    filtered_commands: Vec<usize>,
+    search_query: String,
+    selected_index: usize,
+}
+
+impl CommandPalette {
+    fn new() -> Self {
+        CommandPalette {
+            commands: vec![
+                Command {
+                    name: "Open in Browser".to_string(),
+                    description: "Open the selected story in your default browser".to_string(),
+                    action: |app| {
+                        app.open_current_story();
+                        Ok(())
+                    },
+                },
+                Command {
+                    name: "Open Comments".to_string(),
+                    description: "Open the comments for the selected story".to_string(),
+                    action: |app| {
+                        app.open_comments();
+                        Ok(())
+                    },
+                },
+                Command {
+                    name: "Summarize".to_string(),
+                    description: "Get an AI summary of the selected story".to_string(),
+                    action: |app| {
+                        app.show_menu = true;
+                        app.mode = Mode::Menu;
+                        app.menu_index = 0;
+                        Ok(())
+                    },
+                },
+                Command {
+                    name: "Switch to Top".to_string(),
+                    description: "Switch to Top stories section".to_string(),
+                    action: |app| {
+                        app.current_section = Section::Top;
+                        app.set_status_message("Switching to Top stories...".to_string());
+                        Ok(())
+                    },
+                },
+                Command {
+                    name: "Switch to Ask".to_string(),
+                    description: "Switch to Ask HN section".to_string(),
+                    action: |app| {
+                        app.current_section = Section::Ask;
+                        app.set_status_message("Switching to Ask HN...".to_string());
+                        Ok(())
+                    },
+                },
+                Command {
+                    name: "Switch to Show".to_string(),
+                    description: "Switch to Show HN section".to_string(),
+                    action: |app| {
+                        app.current_section = Section::Show;
+                        app.set_status_message("Switching to Show HN...".to_string());
+                        Ok(())
+                    },
+                },
+                Command {
+                    name: "Switch to Jobs".to_string(),
+                    description: "Switch to Jobs section".to_string(),
+                    action: |app| {
+                        app.current_section = Section::Jobs;
+                        app.set_status_message("Switching to Jobs...".to_string());
+                        Ok(())
+                    },
+                },
+                Command {
+                    name: "Refresh".to_string(),
+                    description: "Refresh the current section".to_string(),
+                    action: |app| {
+                        app.set_status_message("Refreshing...".to_string());
+                        Ok(())
+                    },
+                },
+                Command {
+                    name: "Refresh All".to_string(),
+                    description: "Refresh all sections".to_string(),
+                    action: |app| {
+                        app.set_status_message("Refreshing all sections...".to_string());
+                        Ok(())
+                    },
+                },
+                Command {
+                    name: "Quit".to_string(),
+                    description: "Exit the application".to_string(),
+                    action: |app| {
+                        std::process::exit(0);
+                    },
+                },
+            ],
+            filtered_commands: Vec::new(),
+            search_query: String::new(),
+            selected_index: 0,
+        }
+    }
+
+    fn filter_commands(&mut self) {
+        if self.search_query.is_empty() {
+            self.filtered_commands = (0..self.commands.len()).collect();
+        } else {
+            self.filtered_commands = self.commands
+                .iter()
+                .enumerate()
+                .filter(|(_, cmd)| {
+                    cmd.name.to_lowercase().contains(&self.search_query.to_lowercase()) ||
+                    cmd.description.to_lowercase().contains(&self.search_query.to_lowercase())
+                })
+                .map(|(i, _)| i)
+                .collect();
+        }
+        self.selected_index = 0;
+    }
+
+    fn next_command(&mut self) {
+        if !self.filtered_commands.is_empty() {
+            self.selected_index = (self.selected_index + 1) % self.filtered_commands.len();
+        }
+    }
+
+    fn previous_command(&mut self) {
+        if !self.filtered_commands.is_empty() {
+            self.selected_index = self.selected_index.checked_sub(1)
+                .unwrap_or(self.filtered_commands.len() - 1);
+        }
+    }
+
+    fn execute_selected(&self, app: &mut App) -> Result<(), Box<dyn Error + Send + Sync>> {
+        if let Some(&cmd_idx) = self.filtered_commands.get(self.selected_index) {
+            (self.commands[cmd_idx].action)(app)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn get_selected_command(&self) -> Option<&Command> {
+        self.filtered_commands
+            .get(self.selected_index)
+            .map(|&idx| &self.commands[idx])
+    }
 }
 
 impl App {
@@ -68,6 +224,7 @@ impl App {
             scroll_offset: 0,              // Add this line
             app_name: "Hackertuah News".to_string(),
             cached_stories: std::collections::HashMap::new(),
+            command_palette: CommandPalette::new(),
         }
     }
 
@@ -460,6 +617,11 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     if let Some(summary) = &app.claude_summary {
         draw_summary(f, summary);
     }
+
+    // Draw command palette if active
+    if app.mode == Mode::CommandPalette {
+        draw_command_palette(f, app);
+    }
 }
 
 fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &App) {
@@ -512,6 +674,45 @@ fn draw_summary<B: Backend>(f: &mut Frame<B>, summary: &str) {
     f.render_widget(summary_widget, area);
 }
 
+fn draw_command_palette<B: Backend>(f: &mut Frame<B>, app: &App) {
+    let area = centered_rect(60, 30, f.size());
+    
+    // Draw the search input
+    let search_input = Paragraph::new(app.command_palette.search_query.clone())
+        .style(Style::default().fg(Color::Green))
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .title("Command Palette")
+            .border_style(Style::default().fg(Color::Green)));
+    f.render_widget(search_input, Rect::new(area.x, area.y, area.width, 3));
+
+    // Draw the command list
+    let commands_area = Rect::new(area.x, area.y + 3, area.width, area.height - 3);
+    let items: Vec<ListItem> = app.command_palette.filtered_commands
+        .iter()
+        .map(|&idx| {
+            let cmd = &app.command_palette.commands[idx];
+            let content = vec![
+                Line::from(vec![
+                    Span::styled(cmd.name.clone(), Style::default().fg(Color::Green)),
+                    Span::raw(" "),
+                    Span::styled(cmd.description.clone(), Style::default().fg(Color::DarkGray)),
+                ])
+            ];
+            ListItem::new(content)
+        })
+        .collect();
+
+    let commands_list = List::new(items)
+        .block(Block::default().borders(Borders::ALL))
+        .highlight_style(Style::default().fg(Color::Black).bg(Color::Green))
+        .highlight_symbol("> ");
+
+    let mut list_state = ListState::default();
+    list_state.select(Some(app.command_palette.selected_index));
+    f.render_stateful_widget(commands_list, commands_area, &mut list_state);
+}
+
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -558,6 +759,11 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                 Mode::Normal => match key.code {
                     KeyCode::Char('q') => break,
                     KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => break,
+                    KeyCode::Char('k') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                        app.mode = Mode::CommandPalette;
+                        app.command_palette.search_query.clear();
+                        app.command_palette.filter_commands();
+                    }
                     KeyCode::Char('j') | KeyCode::Down => app.next_story(),
                     KeyCode::Char('k') | KeyCode::Up => app.previous_story(),
                     KeyCode::Char('R') => {
@@ -686,6 +892,54 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                     KeyCode::Esc => {
                         app.claude_summary = None;
                         app.mode = Mode::Normal;
+                    }
+                    _ => {}
+                },
+                Mode::CommandPalette => match key.code {
+                    KeyCode::Esc => {
+                        app.mode = Mode::Normal;
+                        app.command_palette.search_query.clear();
+                    }
+                    KeyCode::Char(c) => {
+                        app.command_palette.search_query.push(c);
+                        app.command_palette.filter_commands();
+                    }
+                    KeyCode::Backspace => {
+                        app.command_palette.search_query.pop();
+                        app.command_palette.filter_commands();
+                    }
+                    KeyCode::Down => app.command_palette.next_command(),
+                    KeyCode::Up => app.command_palette.previous_command(),
+                    KeyCode::Enter => {
+                        if let Some(cmd) = app.command_palette.get_selected_command() {
+                            match cmd.name.as_str() {
+                                "Refresh" => {
+                                    if let Err(e) = app.refresh_stories(&mut terminal).await {
+                                        app.set_status_message(format!("Refresh failed: {}", e));
+                                    }
+                                }
+                                "Refresh All" => {
+                                    if let Err(e) = app.load_all_sections(&mut terminal).await {
+                                        app.set_status_message(format!("Failed to refresh all sections: {}", e));
+                                    }
+                                }
+                                "Switch to Top" | "Switch to Ask" | "Switch to Show" | "Switch to Jobs" => {
+                                    if let Err(e) = (cmd.action)(&mut app) {
+                                        app.set_status_message(format!("Error switching section: {}", e));
+                                    }
+                                    if let Err(e) = app.refresh_stories(&mut terminal).await {
+                                        app.set_status_message(format!("Failed to load stories: {}", e));
+                                    }
+                                }
+                                _ => {
+                                    if let Err(e) = (cmd.action)(&mut app) {
+                                        app.set_status_message(format!("Error executing command: {}", e));
+                                    }
+                                }
+                            }
+                        }
+                        app.mode = Mode::Normal;
+                        app.command_palette.search_query.clear();
                     }
                     _ => {}
                 },

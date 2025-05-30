@@ -63,6 +63,25 @@ cargo run
 - `h`/`l`: Navigate between sections
 - `r`: Refresh current section
 - `R`: Refresh all sections
+- `Ctrl+K`: Open command palette (search and execute commands)
+
+### Command Palette
+
+Press `Ctrl+K` to open the command palette, which provides:
+- Searchable list of all available commands
+- Real-time filtering as you type
+- Command descriptions
+- Execute commands with Enter
+- Navigate with Up/Down arrows
+- Close with Esc
+
+Available commands include:
+- Open in Browser
+- Open Comments
+- Summarize
+- Switch to Top/Ask/Show/Jobs
+- Refresh/Refresh All
+- Quit
 
 ### Options Menu
 
