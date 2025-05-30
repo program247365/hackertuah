@@ -4,6 +4,22 @@ A terminal-based user interface for browsing Hacker News with Vim-style navigati
 
 ![Hacker News TUI Demo](./demo.gif)
 
+## Quickstart
+
+Install and run immediately with Cargo:
+
+```bash
+git clone https://github.com/program247365/hackertuah.git
+cd hackertuah
+cargo run --release
+```
+
+Or install globally from the latest source:
+
+```bash
+cargo install --git https://github.com/program247365/hackertuah
+```
+
 ## Features
 
 - 🚀 Browse top Hacker News stories in your terminal
