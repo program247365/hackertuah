@@ -52,6 +52,7 @@ cargo run
 - `j` or `↓`: Move down
 - `k` or `↑`: Move up
 - `Enter`: Open selected story in default browser
+- `C`: Open comments for selected story
 - `o`: Open options menu
 - `q`: Quit application
 - `Esc`: Close menus/summaries

@@ -109,6 +109,16 @@ impl App {
         }
     }
 
+    fn open_comments(&mut self) {
+        if let Some(story) = self.stories.get(self.selected_index) {
+            let hn_url = format!("https://news.ycombinator.com/item?id={}", story.id);
+            match open::that(&hn_url) {
+                Ok(_) => self.set_status_message("Opened comments in browser".to_string()),
+                Err(_) => self.set_status_message("Failed to open comments".to_string()),
+            }
+        }
+    }
+
     async fn load_all_sections(
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
@@ -547,6 +557,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
             match app.mode {
                 Mode::Normal => match key.code {
                     KeyCode::Char('q') => break,
+                    KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => break,
                     KeyCode::Char('j') | KeyCode::Down => app.next_story(),
                     KeyCode::Char('k') | KeyCode::Up => app.previous_story(),
                     KeyCode::Char('R') => {
@@ -599,6 +610,9 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                         app.show_menu = true;
                         app.mode = Mode::Menu;
                         app.menu_index = 0;
+                    }
+                    KeyCode::Char('C') => {
+                        app.open_comments();
                     }
                     KeyCode::Char('h') => {
                         app.current_section = match app.current_section {
