@@ -1,4 +1,4 @@
-.PHONY: help build run test lint clean
+.PHONY: help build run test lint clean bump
 
 help:
 	@echo "Available commands:"
@@ -7,6 +7,7 @@ help:
 	@echo "  make test    - Run tests (cargo test)"
 	@echo "  make lint    - Run clippy linter (cargo clippy)"
 	@echo "  make clean   - Clean build artifacts (cargo clean)"
+	@echo "  make bump    - Bump version with cog (cog bump --auto)"
 
 build:
 	cargo build
@@ -21,4 +22,7 @@ lint:
 	cargo clippy -- -D warnings
 
 clean:
-	cargo clean 
+	cargo clean
+
+bump:
+	cog bump --auto 
