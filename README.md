@@ -6,6 +6,12 @@ A terminal-based user interface for browsing Hacker News with Vim-style navigati
 
 ## Quickstart
 
+### Install Rust
+
+Install Rust by going here and following the instructions: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
+
+### Install Hackertauh
+
 Install and run immediately with Cargo:
 
 ```bash
@@ -18,6 +24,12 @@ Or install globally from the latest source:
 
 ```bash
 cargo install --git https://github.com/program247365/hackertuah
+```
+
+Now you can call it on your commandline:
+
+```bash
+hackertuah
 ```
 
 ## Features
