@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.0 - 2025-07-30
+#### Documentation
+- Update readme with latest features. - (437ea97) - Kevin B. Ridgway
+#### Features
+- add cross-platform install task with PATH detection - (189b81a) - Kevin B. Ridgway
+#### Miscellaneous Chores
+- add .gitignore for .DS_Store files - (dfaeb8b) - Kevin B. Ridgway
+
+- - -
+
 ## 0.1.0 - 2025-05-30
 #### Bug Fixes
 - Remove unused vars. - (bd0e865) - Kevin B. Ridgway
