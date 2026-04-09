@@ -1,4 +1,4 @@
-.PHONY: help build run test lint clean bump install
+.PHONY: help build run test lint format verify clean bump install
 
 help:
 	@echo "Available commands:"
@@ -6,6 +6,8 @@ help:
 	@echo "  make run     - Run the project (cargo run)"
 	@echo "  make test    - Run tests (cargo test)"
 	@echo "  make lint    - Run clippy linter (cargo clippy)"
+	@echo "  make format  - Run cargo fmt"
+	@echo "  make verify  - Format, lint, build, and test (use after any change)"
 	@echo "  make clean   - Clean build artifacts (cargo clean)"
 	@echo "  make bump    - Bump version with cog (cog bump --auto)"
 	@echo "  make install - Build and install binary to system bin directory"
@@ -21,6 +23,11 @@ test:
 
 lint:
 	cargo clippy -- -D warnings
+
+format:
+	cargo fmt
+
+verify: format lint build test
 
 clean:
 	cargo clean

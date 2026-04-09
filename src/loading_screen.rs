@@ -71,7 +71,7 @@ impl MatrixRain {
             for x in 0..self.chars.len() {
                 let pos = self.positions[x] as i32;
                 let char_index = (y as i32 - pos).rem_euclid(self.chars[x].len() as i32) as usize;
-                let intensity = ((y as i32 - pos) as f32 * 0.5).min(1.0).max(0.0);
+                let intensity = ((y as i32 - pos) as f32 * 0.5).clamp(0.0, 1.0);
 
                 if intensity <= 0.0 {
                     line.push(Span::styled(
