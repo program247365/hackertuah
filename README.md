@@ -6,30 +6,17 @@ A terminal-based user interface for browsing Hacker News with Vim-style navigati
 
 ## Quickstart
 
-### Install Rust
-
-Install Rust by going here and following the instructions: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
-
-### Install Hackertuah
-
-Install and run immediately with Cargo:
+### Homebrew (recommended)
 
 ```bash
-git clone https://github.com/program247365/hackertuah.git
-cd hackertuah
-cargo run --release
+brew tap program247365/tap
+brew install hackertuah
 ```
 
-Or install globally from the latest source:
+### Cargo
 
 ```bash
 cargo install --git https://github.com/program247365/hackertuah
-```
-
-Now you can call it on your commandline:
-
-```bash
-hackertuah
 ```
 
 ## Features
@@ -102,34 +89,16 @@ Press `o` to open the options menu:
 
 ## Installation
 
-### Cargo
-
-```bash
-cargo install --git https://github.com/program247365/hackertuah
-```
-
 ### Prerequisites
 
-- Rust and Cargo (Latest stable version)
-- A Claude API key from Anthropic (for summarization feature)
+- A Claude API key from Anthropic (for the summarization feature)
 
 ### Setup
 
-1. Clone the repository:
-```bash
-git clone https://github.com/program247365/hackertuah
-cd hackertuah
-```
+Add your Claude API key to your environment:
 
-2. Add your Claude API key to your environment:
 ```bash
 export CLAUDE_API_KEY=your_key_here
-```
-
-3. Build and run:
-```bash
-cargo build --release
-cargo run
 ```
 
 ## Project Structure
