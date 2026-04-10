@@ -309,7 +309,7 @@ mod app_impl {
             let start_time = std::time::Instant::now();
 
             loop {
-                terminal.draw(|f| matrix_rain.draw(f, f.size()))?;
+                terminal.draw(|f| matrix_rain.draw(f, f.area()))?;
                 matrix_rain.update();
 
                 if event::poll(Duration::from_millis(50))? {
@@ -377,7 +377,7 @@ mod app_impl {
             let start_time = std::time::Instant::now();
 
             loop {
-                terminal.draw(|f| matrix_rain.draw(f, f.size()))?;
+                terminal.draw(|f| matrix_rain.draw(f, f.area()))?;
                 matrix_rain.update();
 
                 if event::poll(Duration::from_millis(50))? {

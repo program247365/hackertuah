@@ -1,5 +1,4 @@
 use ratatui::{
-    backend::Backend,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
@@ -10,7 +9,7 @@ use ratatui::{
 use crate::app::App;
 use crate::types::Mode;
 
-pub fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+pub fn draw_ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -19,7 +18,7 @@ pub fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             Constraint::Min(0),
             Constraint::Length(if app.mode == Mode::Search { 3 } else { 0 }),
         ])
-        .split(f.size());
+        .split(f.area());
 
     // Title bar
     let title = Paragraph::new(app.app_name.clone())
@@ -112,11 +111,11 @@ pub fn draw_ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     }
 }
 
-fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &App) {
+fn draw_menu(f: &mut Frame, app: &App) {
     let overlay = Block::default().style(Style::default());
-    f.render_widget(overlay, f.size());
+    f.render_widget(overlay, f.area());
 
-    let area = centered_rect(15, 12, f.size());
+    let area = centered_rect(15, 12, f.area());
 
     let menu_items = [
         "Summarize this post...",
@@ -144,8 +143,8 @@ fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &App) {
     f.render_widget(menu, area);
 }
 
-fn draw_summary<B: Backend>(f: &mut Frame<B>, summary: &str) {
-    let area = centered_rect(80, 60, f.size());
+fn draw_summary(f: &mut Frame, summary: &str) {
+    let area = centered_rect(80, 60, f.area());
 
     let summary_widget = Paragraph::new(summary)
         .block(
@@ -158,8 +157,8 @@ fn draw_summary<B: Backend>(f: &mut Frame<B>, summary: &str) {
     f.render_widget(summary_widget, area);
 }
 
-fn draw_command_palette<B: Backend>(f: &mut Frame<B>, app: &App) {
-    let area = centered_rect(60, 30, f.size());
+fn draw_command_palette(f: &mut Frame, app: &App) {
+    let area = centered_rect(60, 30, f.area());
 
     let search_input = Paragraph::new(app.command_palette.search_query.clone())
         .style(Style::default().fg(Color::Green))
