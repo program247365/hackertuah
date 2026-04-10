@@ -23,9 +23,10 @@ mod app_impl {
     use crossterm::event::{self, Event, KeyCode};
     use ratatui::{backend::CrosstermBackend, Terminal};
 
+    use crate::hn_api::fetch_comments;
     use crate::hn_api::fetch_stories;
     use crate::loading_screen::MatrixRain;
-    use crate::types::{Mode, Section, Story};
+    use crate::types::{FlatComment, Mode, Section, Story};
 
     pub struct Command {
         pub name: String,
@@ -212,6 +213,11 @@ mod app_impl {
         pub command_palette: CommandPalette,
         pub search_query: String,
         pub filtered_stories: Vec<usize>,
+        pub comments: Vec<FlatComment>,
+        pub comments_selected: usize,
+        pub comments_scroll: usize,
+        pub comments_story_title: String,
+        pub comments_story_id: u32,
     }
 
     impl Default for App {
@@ -237,6 +243,11 @@ mod app_impl {
                 command_palette: CommandPalette::new(),
                 search_query: String::new(),
                 filtered_stories: Vec::new(),
+                comments: Vec::new(),
+                comments_selected: 0,
+                comments_scroll: 0,
+                comments_story_title: String::new(),
+                comments_story_id: 0,
             }
         }
 
@@ -436,6 +447,96 @@ mod app_impl {
             }
         }
 
+        pub async fn load_comments(
+            &mut self,
+            terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            let story = match self.stories.get(self.selected_index) {
+                Some(s) => s.clone(),
+                None => return Ok(()),
+            };
+            self.comments_story_title = story.title.clone();
+            self.comments_story_id = story.id;
+
+            if story.kids.is_empty() {
+                self.comments = Vec::new();
+                self.comments_selected = 0;
+                self.comments_scroll = 0;
+                self.mode = Mode::Comments;
+                return Ok(());
+            }
+
+            let mut matrix_rain = MatrixRain::new(terminal.size()?.width as usize);
+            let story_clone = story.clone();
+            let comments_future = tokio::spawn(async move { fetch_comments(&story_clone).await });
+            let start_time = std::time::Instant::now();
+
+            loop {
+                terminal.draw(|f| matrix_rain.draw(f, f.area()))?;
+                matrix_rain.update();
+
+                if event::poll(Duration::from_millis(50))? {
+                    if let Event::Key(key) = event::read()? {
+                        if key.code == KeyCode::Char('q') || key.code == KeyCode::Esc {
+                            return Ok(());
+                        }
+                    }
+                }
+
+                if comments_future.is_finished() {
+                    match comments_future.await {
+                        Ok(Ok(comments)) => {
+                            self.comments = comments;
+                            self.comments_selected = 0;
+                            self.comments_scroll = 0;
+                            self.mode = Mode::Comments;
+                            break;
+                        }
+                        Ok(Err(e)) => {
+                            self.set_status_message(format!("Failed to load comments: {}", e));
+                            break;
+                        }
+                        Err(e) => {
+                            self.set_status_message(format!("Task error: {}", e));
+                            break;
+                        }
+                    }
+                }
+
+                if start_time.elapsed() > Duration::from_secs(30) {
+                    self.set_status_message("Timed out loading comments".to_string());
+                    break;
+                }
+
+                tokio::time::sleep(Duration::from_millis(16)).await;
+            }
+
+            Ok(())
+        }
+
+        pub fn next_comment(&mut self) {
+            if !self.comments.is_empty() {
+                self.comments_selected = (self.comments_selected + 1) % self.comments.len();
+            }
+        }
+
+        pub fn previous_comment(&mut self) {
+            if !self.comments.is_empty() {
+                self.comments_selected = self
+                    .comments_selected
+                    .checked_sub(1)
+                    .unwrap_or(self.comments.len() - 1);
+            }
+        }
+
+        pub fn ensure_comment_visible(&mut self, height: usize) {
+            if self.comments_selected < self.comments_scroll {
+                self.comments_scroll = self.comments_selected;
+            } else if self.comments_selected >= self.comments_scroll + height {
+                self.comments_scroll = self.comments_selected - height + 1;
+            }
+        }
+
         pub fn filter_stories(&mut self) {
             if self.search_query.is_empty() {
                 self.filtered_stories = (0..self.stories.len()).collect();
@@ -551,6 +652,11 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                         app.mode = Mode::Menu;
                         app.menu_index = 0;
                     }
+                    KeyCode::Char('c') => {
+                        if let Err(e) = app.load_comments(&mut terminal).await {
+                            app.set_status_message(format!("Failed to load comments: {}", e));
+                        }
+                    }
                     KeyCode::Char('C') => {
                         app.open_comments();
                     }
@@ -625,6 +731,48 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                         app.mode = Mode::Normal;
                     }
                 }
+                Mode::Comments => match key.code {
+                    KeyCode::Esc | KeyCode::Char('q') => {
+                        app.mode = Mode::Normal;
+                    }
+                    KeyCode::Char('j') | KeyCode::Down => app.next_comment(),
+                    KeyCode::Char('k') | KeyCode::Up => app.previous_comment(),
+                    KeyCode::Char('r') => {
+                        if let Some(fc) = app.comments.get(app.comments_selected) {
+                            let url = format!(
+                                "https://news.ycombinator.com/reply?id={}&goto=item%3Fid%3D{}%23{}",
+                                fc.comment.id, app.comments_story_id, fc.comment.id
+                            );
+                            match open::that(&url) {
+                                Ok(_) => app
+                                    .set_status_message("Opened reply page in browser".to_string()),
+                                Err(_) => {
+                                    app.set_status_message("Failed to open reply page".to_string())
+                                }
+                            }
+                        }
+                    }
+                    KeyCode::Char('R') => {
+                        if let Err(e) = app.load_comments(&mut terminal).await {
+                            app.set_status_message(format!("Failed to refresh comments: {}", e));
+                        }
+                    }
+                    KeyCode::Char('o') | KeyCode::Enter => {
+                        if let Some(fc) = app.comments.get(app.comments_selected) {
+                            let url =
+                                format!("https://news.ycombinator.com/item?id={}", fc.comment.id);
+                            match open::that(&url) {
+                                Ok(_) => {
+                                    app.set_status_message("Opened comment in browser".to_string())
+                                }
+                                Err(_) => {
+                                    app.set_status_message("Failed to open comment".to_string())
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                },
                 Mode::CommandPalette => match key.code {
                     KeyCode::Esc => {
                         app.mode = Mode::Normal;

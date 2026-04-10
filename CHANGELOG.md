@@ -2,6 +2,25 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.3.0 - 2026-04-10
+#### Features
+- Threaded comments view with `c` key — fetches and displays HN comments inline with indentation
+- Comment counts displayed for each story in the list
+- Open individual comments in browser with `o` / `Enter` from comments view
+- Reply to comments with `r` — opens HN reply page in browser
+- Refresh comments with `R` from comments view
+- Context-aware help bar at the bottom of every screen showing relevant keyboard shortcuts
+#### Refactoring
+- Split main.rs into types.rs, hn_api.rs, and ui.rs modules matching documented architecture
+- Added `make format` and `make verify` (format + lint + build + test) targets
+#### Miscellaneous Chores
+- Updated all dependencies to latest versions (ratatui 0.30, crossterm 0.29, reqwest 0.13, open 5.3, rand 0.9, tokio 1.51)
+- Removed unused serde_json dependency
+- Fixed all clippy warnings
+- Updated README with Features section, current project structure, and keyboard controls
+- Added CLAUDE.md for AI-assisted development context
+
+- - -
 ## 0.2.0 - 2025-07-30
 #### Documentation
 - Update readme with latest features. - (437ea97) - Kevin B. Ridgway

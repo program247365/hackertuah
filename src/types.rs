@@ -8,6 +8,32 @@ pub struct Story {
     pub text: Option<String>,
     pub by: String,
     pub score: i32,
+    #[serde(default)]
+    pub descendants: u32,
+    #[serde(default)]
+    pub kids: Vec<u32>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Comment {
+    pub id: u32,
+    #[serde(default)]
+    pub by: String,
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
+    pub kids: Vec<u32>,
+    #[serde(default)]
+    pub time: u64,
+    #[serde(default)]
+    pub deleted: bool,
+    #[serde(default)]
+    pub dead: bool,
+}
+
+pub struct FlatComment {
+    pub comment: Comment,
+    pub depth: usize,
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -43,6 +69,7 @@ pub enum Mode {
     Normal,
     Menu,
     Summary,
+    Comments,
     CommandPalette,
     Search,
 }

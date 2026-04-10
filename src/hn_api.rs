@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::types::{ClaudeRequest, Message, Section, Story};
+use crate::types::{ClaudeRequest, Comment, FlatComment, Message, Section, Story};
 
 pub async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error + Send + Sync>> {
     let client = reqwest::Client::new();
@@ -27,6 +27,48 @@ pub async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error
     }
 
     Ok(stories)
+}
+
+pub async fn fetch_comments(
+    story: &Story,
+) -> Result<Vec<FlatComment>, Box<dyn Error + Send + Sync>> {
+    let client = reqwest::Client::new();
+    let mut flat_comments = Vec::new();
+    fetch_comment_tree(&client, &story.kids, 0, &mut flat_comments, 4).await?;
+    Ok(flat_comments)
+}
+
+async fn fetch_comment_tree(
+    client: &reqwest::Client,
+    kid_ids: &[u32],
+    depth: usize,
+    out: &mut Vec<FlatComment>,
+    max_depth: usize,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    for &id in kid_ids {
+        let url = format!("https://hacker-news.firebaseio.com/v0/item/{}.json", id);
+        let resp = client.get(&url).send().await?;
+        let comment: Comment = match resp.json().await {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        if comment.deleted || comment.dead {
+            continue;
+        }
+        let child_ids = comment.kids.clone();
+        out.push(FlatComment { comment, depth });
+        if depth < max_depth {
+            Box::pin(fetch_comment_tree(
+                client,
+                &child_ids,
+                depth + 1,
+                out,
+                max_depth,
+            ))
+            .await?;
+        }
+    }
+    Ok(())
 }
 
 pub async fn get_claude_summary(text: &str) -> Result<String, Box<dyn Error + Send + Sync>> {

@@ -10,7 +10,7 @@ A terminal-based user interface for browsing Hacker News with Vim-style navigati
 
 Install Rust by going here and following the instructions: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
 
-### Install Hackertauh
+### Install Hackertuah
 
 Install and run immediately with Cargo:
 
@@ -34,56 +34,71 @@ hackertuah
 
 ## Features
 
-- 🚀 **Browse** top Hacker News stories in your terminal
-- ⌨️ **Vim-style navigation** (j/k, arrows, etc.)
-- 🤖 **Claude AI integration** for story summarization
-- 🌐 **Open stories** directly in your default browser
-- 💚 **Classic green-on-black** terminal aesthetic
-- 🎯 **Minimalist, distraction-free interface**
-- 🔍 **Instant search/filter**: Press `/` or use the command palette to filter stories as you type
-- 🧑‍💻 **Command Palette**: Press `Ctrl+K` to access all commands, including search, section switching, and more
-- 📝 **Options menu** for each story (summarize, open, close)
-- 🏷️ **Section switching**: Top, Ask, Show, Jobs
-- 🛠️ **Easy install & run** with Cargo
-
-## Command Palette 🧑‍💻
-
-Press `Ctrl+K` to open the command palette:
-
-- 🔎 **Search for commands** as you type
-- ⚡ **Quickly switch sections** (Top, Ask, Show, Jobs)
-- 🔄 **Refresh** current or all sections
-- 🔍 **Activate search mode** (type 'search' and press Enter)
-- 🌐 **Open in browser**, 💬 **Open comments**, 🤖 **Summarize**
-- ❌ **Quit** the app
-- ⬆️⬇️ Navigate with Up/Down arrows, `Esc` to close
-
-## Search 🔍
-
-- Press `/` to start searching, or open the command palette and type 'search'
-- Type to filter stories by title in real-time
-- Use Up/Down arrows to navigate filtered results
-- Press Enter to open the selected story, or Esc to cancel
-- Works across all sections (Top, Ask, Show, Jobs)
+- **Browse** top Hacker News stories in your terminal across Top, Ask, Show, and Jobs sections
+- **Vim-style navigation** (j/k, h/l, arrows) throughout the app
+- **Threaded comments view** — press `c` to read comments inline with indentation mirroring HN's thread structure, scroll through them with j/k, and reply directly
+- **Comment counts** displayed for each story in the list
+- **Claude AI integration** for story summarization via the options menu
+- **Command Palette** (`Ctrl+K`) for quick access to all commands with fuzzy search
+- **Instant search/filter** — press `/` to filter stories by title as you type
+- **Open in browser** — open stories, comments, or reply pages directly in your default browser
+- **Section switching** — navigate between Top, Ask, Show, and Jobs with `h/l` or hotkeys
+- **Context-aware help bar** — keyboard shortcuts displayed at the bottom of every screen, updating per context
+- **Matrix-style loading screen** while fetching data
+- **Classic green-on-black** terminal aesthetic
 
 ## Keyboard Controls
 
-- `j` or `↓`: Move down
-- `k` or `↑`: Move up
-- `Enter`: Open selected story in default browser
-- `C`: Open comments for selected story
-- `o`: Open options menu
-- `q`: Quit application
-- `Esc`: Close menus/summaries
-- `T`: Switch to Top stories
-- `A`: Switch to Ask HN
-- `S`: Switch to Show HN
-- `J`: Switch to Jobs
-- `h`/`l`: Navigate between sections
-- `r`: Refresh current section
-- `R`: Refresh all sections
-- `Ctrl+K`: Open command palette (search and execute commands)
-- `/`: Start search (type to filter stories)
+### Stories (Normal Mode)
+
+| Key | Action |
+|-----|--------|
+| `j` / `↓` | Move down |
+| `k` / `↑` | Move up |
+| `Enter` | Open story in browser |
+| `c` | View comments inline |
+| `C` | Open comments in browser |
+| `o` | Open options menu |
+| `h` / `l` | Previous / next section |
+| `T` / `A` / `S` / `J` | Jump to Top / Ask / Show / Jobs |
+| `r` | Refresh current section |
+| `R` | Refresh all sections |
+| `/` | Search / filter stories |
+| `Ctrl+K` | Open command palette |
+| `q` / `Ctrl+C` | Quit |
+
+### Comments View
+
+| Key | Action |
+|-----|--------|
+| `j` / `↓` | Move down |
+| `k` / `↑` | Move up |
+| `o` / `Enter` | Open selected comment in browser |
+| `r` | Reply to selected comment (opens HN reply page) |
+| `R` | Refresh comments |
+| `Esc` / `q` | Back to stories |
+
+### Search Mode
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Navigate filtered results |
+| `Enter` | Open selected story |
+| `Esc` | Cancel search |
+
+### Command Palette
+
+Press `Ctrl+K` to open the command palette, which provides:
+- Searchable list of all available commands
+- Real-time filtering as you type
+- Navigate with Up/Down arrows, execute with Enter, close with Esc
+
+### Options Menu
+
+Press `o` to open the options menu:
+1. Summarize this post (uses Claude AI)
+2. Open in browser
+3. Close menu
 
 ## Installation
 
@@ -96,14 +111,14 @@ cargo install --git https://github.com/program247365/hackertuah
 ### Prerequisites
 
 - Rust and Cargo (Latest stable version)
-- A Claude API key from Anthropic
+- A Claude API key from Anthropic (for summarization feature)
 
 ### Setup
 
 1. Clone the repository:
 ```bash
 git clone https://github.com/program247365/hackertuah
-cd hackernews-tui
+cd hackertuah
 ```
 
 2. Add your Claude API key to your environment:
@@ -117,101 +132,29 @@ cargo build --release
 cargo run
 ```
 
-## Usage
+## Project Structure
 
-### Keyboard Controls
-
-- `j` or `↓`: Move down
-- `k` or `↑`: Move up
-- `Enter`: Open selected story in default browser
-- `C`: Open comments for selected story
-- `o`: Open options menu
-- `q`: Quit application
-- `Esc`: Close menus/summaries
-- `T`: Switch to Top stories
-- `A`: Switch to Ask HN
-- `S`: Switch to Show HN
-- `J`: Switch to Jobs
-- `h`/`l`: Navigate between sections
-- `r`: Refresh current section
-- `R`: Refresh all sections
-- `Ctrl+K`: Open command palette (search and execute commands)
-- `/`: Start search (type to filter stories)
-
-### Command Palette
-
-Press `Ctrl+K` to open the command palette, which provides:
-- Searchable list of all available commands
-- Real-time filtering as you type
-- Command descriptions
-- Execute commands with Enter
-- Navigate with Up/Down arrows
-- Close with Esc
-
-Available commands now include:
-- Open in Browser
-- Open Comments
-- Summarize
-- Search (activate search/filter mode)
-- Switch to Top/Ask/Show/Jobs
-- Refresh/Refresh All
-- Quit
-
-### Options Menu
-
-Press `o` to open the options menu, which provides:
-1. Summarize this post (uses Claude AI)
-2. Open in browser
-3. Close menu
-
-### Story Information
-
-Each story displays:
-- Title
-- Score
-- Author
-- Direct link to article or discussion
+```
+src/
+├── main.rs              # App state, event loop, terminal setup
+├── types.rs             # Data types (Story, Comment, Section, Mode)
+├── hn_api.rs            # Hacker News & Claude API integration
+├── ui.rs                # UI rendering and layout
+└── loading_screen.rs    # Matrix-style loading animation
+```
 
 ## Dependencies
 
 ```toml
 [dependencies]
-ratatui = "0.21.0"
-crossterm = "0.26.0"
-tokio = { version = "1.0", features = ["full"] }
-reqwest = { version = "0.11", features = ["json"] }
+ratatui = "0.30.0"
+crossterm = "0.29.0"
+tokio = { version = "1.51", features = ["full"] }
+reqwest = { version = "0.13", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-open = "3.2"
+open = "5.3"
+rand = "0.9"
 ```
-
-## Project Structure
-
-```
-src/
-├── main.rs          # Main application logic
-├── types.rs         # Data structures and type definitions
-├── ui.rs            # UI rendering and layout
-└── hn_api.rs        # Hacker News API integration
-```
-
-## Features in Detail
-
-### Hacker News Integration
-- Fetches top 30 stories from Hacker News API
-- Real-time score and comment updates
-- Direct access to article URLs and discussion pages
-
-### Claude AI Integration
-- Summarizes long articles and discussions
-- Provides concise, intelligent summaries of complex topics
-- Accessible through the options menu with `o`
-
-### Terminal UI
-- Built with ratatui for smooth rendering
-- Classic green-on-black color scheme
-- Efficient memory usage and fast rendering
-- Responsive layout that adapts to terminal size
 
 ## Contributing
 
