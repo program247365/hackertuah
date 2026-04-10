@@ -1,3 +1,4 @@
+tag_prefix = "v"
 from_latest_tag = false
 ignore_merge_commits = false
 disable_changelog = false

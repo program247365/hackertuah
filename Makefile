@@ -54,18 +54,21 @@ install:
 
 publish: ## Bump version, push, create GitHub release, update Homebrew formula
 	cog bump --auto
-	$(eval VERSION := $(shell cargo metadata --no-deps --format-version 1 | python3 -c "import sys,json;print(json.load(sys.stdin)['packages'][0]['version'])"))
-	@echo "Publishing v$(VERSION)..."
+	$(eval TAG := $(shell git describe --tags --abbrev=0))
+	$(eval VERSION := $(shell echo "$(TAG)" | sed 's/^v//'))
+	@echo "Publishing $(TAG)..."
 	git push origin main
-	git push origin v$(VERSION)
-	gh release create v$(VERSION) \
+	git push origin $(TAG)
+	gh release create $(TAG) \
 		--repo program247365/hackertuah \
-		--title "v$(VERSION)" \
+		--title "$(TAG)" \
 		--generate-notes
 	$(MAKE) bump-formula VERSION=$(VERSION)
 
-bump-formula: ## Update Homebrew tap formula to current version
-	$(eval SHA256 := $(shell curl -sL "https://github.com/program247365/hackertuah/archive/refs/tags/v$(VERSION).tar.gz" | shasum -a 256 | awk '{print $$1}'))
+bump-formula: ## Update Homebrew tap formula to current version (requires VERSION and TAG)
+	$(eval TAG ?= $(shell git describe --tags --abbrev=0))
+	$(eval VERSION ?= $(shell echo "$(TAG)" | sed 's/^v//'))
+	$(eval SHA256 := $(shell curl -sL "https://github.com/program247365/hackertuah/archive/refs/tags/$(TAG).tar.gz" | shasum -a 256 | awk '{print $$1}'))
 	@echo "Updating formula: v$(VERSION) sha256=$(SHA256)"
 	rm -rf $(TAP_DIR)
 	git clone $(TAP_REPO) $(TAP_DIR)
