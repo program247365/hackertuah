@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file. See [conven
 - - -
 ## 0.3.0 - 2026-04-10
 #### Features
+- **(comments)** add threaded comments view, help bar, and version 0.3.0 - (a4c90c7) - Kevin B. Ridgway
+- **(publish)** Publish to brew tap - (65a04c3) - Kevin B. Ridgway
+- add cross-platform install task with PATH detection - (32e534d) - Kevin B. Ridgway
+#### Miscellaneous Chores
+- **(version)** 0.2.0 - (0be84c3) - Kevin B. Ridgway
+- update all dependencies to latest versions, remove unused serde_json - (18752c4) - Kevin B. Ridgway
+- add .gitignore for .DS_Store files - (40eb258) - Kevin B. Ridgway
+#### Refactoring
+- split main.rs into types, hn_api, and ui modules - (5d45a8f) - Kevin B. Ridgway
+
+- - -
+
+## 0.3.0 - 2026-04-10
+#### Features
 - Threaded comments view with `c` key — fetches and displays HN comments inline with indentation
 - Comment counts displayed for each story in the list
 - Open individual comments in browser with `o` / `Enter` from comments view
