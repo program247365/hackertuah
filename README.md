@@ -87,6 +87,24 @@ Press `o` to open the options menu:
 2. Open in browser
 3. Close menu
 
+## Agent / scripting usage
+
+Running `hackertuah` with no arguments launches the TUI. Subcommands never
+touch the terminal — data goes to stdout, progress and errors to stderr:
+
+```bash
+hackertuah stories [top|ask|show|jobs] [--limit N] [--json]
+```
+
+- `--json` emits raw HN story objects (`id`, `title`, `url`, `text`, `by`,
+  `score`, `descendants`, `kids`), pretty-printed.
+- Exit codes: 0 success, 1 network/runtime failure, 2 usage error (also
+  returned when the bare TUI is invoked with stdout piped).
+
+```bash
+hackertuah stories --limit 10 --json | jq -r '.[].title'
+```
+
 ## Installation
 
 ### Prerequisites
@@ -106,6 +124,7 @@ export CLAUDE_API_KEY=your_key_here
 ```
 src/
 ├── main.rs              # App state, event loop, terminal setup
+├── cli.rs               # Agent-friendly CLI (stories subcommand, --json)
 ├── types.rs             # Data types (Story, Comment, Section, Mode)
 ├── hn_api.rs            # Hacker News & Claude API integration
 ├── ui.rs                # UI rendering and layout
@@ -116,11 +135,13 @@ src/
 
 ```toml
 [dependencies]
+clap = { version = "4.5", features = ["derive"] }
 ratatui = "0.30.0"
 crossterm = "0.29.0"
 tokio = { version = "1.51", features = ["full"] }
 reqwest = { version = "0.13", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 open = "5.3"
 rand = "0.9"
 ```

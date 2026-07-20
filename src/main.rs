@@ -6,6 +6,7 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::error::Error;
 use std::io;
+mod cli;
 mod hn_api;
 mod loading_screen;
 mod types;
@@ -314,7 +315,9 @@ mod app_impl {
 
             let futures: Vec<_> = sections
                 .into_iter()
-                .map(|section| tokio::spawn(async move { (section, fetch_stories(section).await) }))
+                .map(|section| {
+                    tokio::spawn(async move { (section, fetch_stories(section, 100).await) })
+                })
                 .collect();
 
             let start_time = std::time::Instant::now();
@@ -384,7 +387,7 @@ mod app_impl {
 
             let mut matrix_rain = MatrixRain::new(terminal.size()?.width as usize);
             let section = self.current_section;
-            let stories_future = tokio::spawn(async move { fetch_stories(section).await });
+            let stories_future = tokio::spawn(async move { fetch_stories(section, 100).await });
             let start_time = std::time::Instant::now();
 
             loop {
@@ -567,6 +570,20 @@ use types::{Mode, Section};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
+    let parsed = <cli::Cli as clap::Parser>::parse();
+    if let Some(cmd) = parsed.command {
+        std::process::exit(cli::run(cmd).await);
+    }
+
+    {
+        use std::io::IsTerminal;
+        if !io::stdout().is_terminal() {
+            eprintln!("stdout is not a terminal; the TUI needs one.");
+            eprintln!("hint: did you mean `hackertuah stories --json`?");
+            std::process::exit(2);
+        }
+    }
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -868,13 +885,11 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                                 (app.selected_index + 1) % app.filtered_stories.len();
                         }
                     }
-                    KeyCode::Up => {
-                        if !app.filtered_stories.is_empty() {
-                            app.selected_index = app
-                                .selected_index
-                                .checked_sub(1)
-                                .unwrap_or(app.filtered_stories.len() - 1);
-                        }
+                    KeyCode::Up if !app.filtered_stories.is_empty() => {
+                        app.selected_index = app
+                            .selected_index
+                            .checked_sub(1)
+                            .unwrap_or(app.filtered_stories.len() - 1);
                     }
                     _ => {}
                 },

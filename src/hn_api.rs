@@ -2,7 +2,10 @@ use std::error::Error;
 
 use crate::types::{ClaudeRequest, Comment, FlatComment, Message, Section, Story};
 
-pub async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error + Send + Sync>> {
+pub async fn fetch_stories(
+    section: Section,
+    limit: usize,
+) -> Result<Vec<Story>, Box<dyn Error + Send + Sync>> {
     let client = reqwest::Client::new();
 
     let ids: Vec<u32> = client
@@ -13,7 +16,7 @@ pub async fn fetch_stories(section: Section) -> Result<Vec<Story>, Box<dyn Error
         .await?;
 
     let mut stories = Vec::new();
-    for id in ids.iter().take(100) {
+    for id in ids.iter().take(limit) {
         let story: Story = client
             .get(format!(
                 "https://hacker-news.firebaseio.com/v0/item/{}.json",
