@@ -1,6 +1,6 @@
 # Hacker News TUI
 
-A terminal-based user interface for browsing Hacker News with Vim-style navigation and Claude AI integration for story summarization.
+A terminal-based user interface for browsing Hacker News with Vim-style navigation and Claude AI integration for story summarization. Also an agent-friendly CLI: `hackertuah stories --json` gives scripts and coding agents clean JSON on stdout.
 
 ![Hacker News TUI Demo](./demo.gif)
 
@@ -33,6 +33,7 @@ cargo install --git https://github.com/program247365/hackertuah
 - **Context-aware help bar** — keyboard shortcuts displayed at the bottom of every screen, updating per context
 - **Matrix-style loading screen** while fetching data
 - **Classic green-on-black** terminal aesthetic
+- **Agent-friendly CLI** — `hackertuah stories [section] [--limit N] [--json]` for scripts, pipelines, and coding agents; stable exit codes, data on stdout, progress on stderr (see [Agent / scripting usage](#agent--scripting-usage))
 
 ## Keyboard Controls
 
