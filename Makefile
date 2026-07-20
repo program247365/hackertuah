@@ -54,16 +54,16 @@ install:
 
 publish: ## Bump version, push, create GitHub release, update Homebrew formula
 	cog bump --auto
-	$(eval TAG := $(shell git describe --tags --abbrev=0))
-	$(eval VERSION := $(shell echo "$(TAG)" | sed 's/^v//'))
-	@echo "Publishing $(TAG)..."
-	git push origin main
-	git push origin $(TAG)
-	gh release create $(TAG) \
+	@TAG=$$(git describe --tags --abbrev=0); \
+	VERSION=$${TAG#v}; \
+	echo "Publishing $$TAG..."; \
+	git push origin main && \
+	git push origin "$$TAG" && \
+	gh release create "$$TAG" \
 		--repo program247365/hackertuah \
-		--title "$(TAG)" \
-		--generate-notes
-	$(MAKE) bump-formula VERSION=$(VERSION)
+		--title "$$TAG" \
+		--generate-notes && \
+	$(MAKE) bump-formula TAG=$$TAG VERSION=$$VERSION
 
 bump-formula: ## Update Homebrew tap formula to current version (requires VERSION and TAG)
 	$(eval TAG ?= $(shell git describe --tags --abbrev=0))
