@@ -6,6 +6,7 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::error::Error;
 use std::io;
+mod cli;
 mod hn_api;
 mod loading_screen;
 mod types;
@@ -868,13 +869,11 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                                 (app.selected_index + 1) % app.filtered_stories.len();
                         }
                     }
-                    KeyCode::Up => {
-                        if !app.filtered_stories.is_empty() {
-                            app.selected_index = app
-                                .selected_index
-                                .checked_sub(1)
-                                .unwrap_or(app.filtered_stories.len() - 1);
-                        }
+                    KeyCode::Up if !app.filtered_stories.is_empty() => {
+                        app.selected_index = app
+                            .selected_index
+                            .checked_sub(1)
+                            .unwrap_or(app.filtered_stories.len() - 1);
                     }
                     _ => {}
                 },
