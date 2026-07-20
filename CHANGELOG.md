@@ -2,6 +2,23 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.4.0 - 2026-07-20
+#### Documentation
+- **(readme)** surface agent CLI in intro and features; bump crate to 0.4.0 - (d70586a) - Kevin B. Ridgway
+- document agent-friendly CLI contract - (44f178b) - Kevin B. Ridgway
+- add agent-CLI phase 1 implementation plan - (a4f3b3a) - Kevin B. Ridgway
+- add Homebrew install as primary method, remove duplicate install sections - (774646e) - Kevin B. Ridgway
+#### Features
+- **(cli)** stories subcommand with --json, exit codes, and TTY guard - (c4048ae) - Kevin B. Ridgway
+- **(cli)** add clap arg definitions for stories subcommand - (f4ddf61) - Kevin B. Ridgway
+- **(types)** derive Serialize on Story for JSON output - (a9dba99) - Kevin B. Ridgway
+#### Miscellaneous Chores
+- add publish target and set v-prefixed tags - (25292ad) - Kevin B. Ridgway
+#### Refactoring
+- **(api)** add limit parameter to fetch_stories - (5278c52) - Kevin B. Ridgway
+
+- - -
+
 ## 0.3.0 - 2026-04-10
 #### Features
 - **(comments)** add threaded comments view, help bar, and version 0.3.0 - (a4c90c7) - Kevin B. Ridgway
