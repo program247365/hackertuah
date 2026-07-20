@@ -27,6 +27,7 @@ The `src/` directory is split by concern:
 - **`types.rs`** — Data types: `Story`, `Comment`, `FlatComment`, `Section`, `Mode`, `ClaudeRequest`, `Message`. No dependencies on other local modules.
 - **`hn_api.rs`** — HTTP layer: `fetch_stories`, `fetch_comments` (HN Firebase API), `get_claude_summary` (Anthropic API). Depends on `types`.
 - **`ui.rs`** — All rendering: `draw_ui`, `draw_comments`, `draw_help_bar`, `draw_menu`, `draw_summary`, `draw_command_palette`, `centered_rect`, `strip_html`. Depends on `types` and `app`.
+- **`cli.rs`** — Agent-friendly CLI: clap definitions (`Cli`, `Commands`, `CliSection`) and the non-TUI execution path (`run`, `format_story`). Data on stdout, progress on stderr; exit 0/1/2. Depends on `types` and `hn_api`.
 - **`loading_screen.rs`** — `MatrixRain` struct for the Matrix-style loading animation.
 - **`main.rs`** — `App` struct (all application state), `Command`/`CommandPalette`, terminal setup/teardown, and the main event loop. `App` is exposed via `pub mod app` so `ui.rs` can reference it.
 
@@ -34,7 +35,8 @@ The app uses a single-threaded tokio runtime. Story fetching spawns tokio tasks 
 
 ## Key Details
 
-- HN API: Firebase REST API at `hacker-news.firebaseio.com/v0/`. Fetches up to 100 stories per section.
+- HN API: Firebase REST API at `hacker-news.firebaseio.com/v0/`. Fetches up to 100 stories per section (serially; `fetch_stories` takes a `limit`).
+- CLI mode: `hackertuah stories [section] [--limit N] [--json]` bypasses the TUI entirely; bare `hackertuah` with piped stdout exits 2 with a hint.
 - Claude API: Requires `CLAUDE_API_KEY` env var. Currently hardcoded to `claude-3-opus-20240229` model.
 - Versioning: Uses cocogitto (`cog.toml`) with conventional commits. Changelog at `CHANGELOG.md`.
 - CI: GitHub Actions runs `cargo build` and `cargo test` on push/PR to main.
