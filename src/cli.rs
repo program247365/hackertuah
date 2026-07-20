@@ -7,7 +7,17 @@ use crate::types::{Section, Story};
 #[command(
     name = "hackertuah",
     version,
-    about = "Hacker News in your terminal — TUI by default, agent-friendly subcommands for scripts"
+    about = "Hacker News in your terminal — TUI by default, agent-friendly subcommands for scripts",
+    after_help = "Exit codes:
+  0  success
+  1  network/runtime failure
+  2  usage error (also returned when the TUI is invoked with piped stdout)
+
+Subcommands write data to stdout and progress/errors to stderr.
+
+Examples:
+  hackertuah stories --limit 10 --json | jq -r '.[].title'
+  hackertuah stories ask --json"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -153,6 +163,15 @@ mod tests {
     #[test]
     fn cli_section_maps_to_types_section() {
         assert_eq!(Section::from(CliSection::Jobs).as_str(), "Jobs");
+    }
+
+    #[test]
+    fn help_documents_exit_codes_and_examples() {
+        use clap::CommandFactory;
+        let help = Cli::command().render_long_help().to_string();
+        assert!(help.contains("Exit codes:"));
+        assert!(help.contains("Examples:"));
+        assert!(help.contains("--json | jq"));
     }
 
     fn sample_story() -> Story {
