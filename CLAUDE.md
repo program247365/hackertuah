@@ -17,7 +17,9 @@ make format       # cargo fmt
 make verify       # format + lint + build + test (run after any change)
 make clean        # cargo clean
 make install      # release build + copy binary to ~/bin
-make bump         # cog bump --auto (cocogitto versioning)
+make bump         # cog bump --auto (cocogitto versioning; pre-bump hooks sync Cargo.toml via cargo set-version)
+make publish      # bump, push, GitHub release, update Homebrew formula
+make smoke-test   # verify the published formula installs and runs
 ```
 
 ## Architecture
@@ -38,6 +40,6 @@ The app uses a single-threaded tokio runtime. Story fetching spawns tokio tasks 
 - HN API: Firebase REST API at `hacker-news.firebaseio.com/v0/`. Fetches up to 100 stories per section (serially; `fetch_stories` takes a `limit`).
 - CLI mode: `hackertuah stories [section] [--limit N] [--json]` bypasses the TUI entirely; bare `hackertuah` with piped stdout exits 2 with a hint.
 - Claude API: Requires `CLAUDE_API_KEY` env var. Currently hardcoded to `claude-3-opus-20240229` model.
-- Versioning: Uses cocogitto (`cog.toml`) with conventional commits. Changelog at `CHANGELOG.md`.
+- Versioning: Uses cocogitto (`cog.toml`) with conventional commits. Changelog at `CHANGELOG.md`. Pre-bump hooks run `cargo set-version` (requires cargo-edit) so Cargo.toml/Cargo.lock land in the bump commit.
 - CI: GitHub Actions runs `cargo build` and `cargo test` on push/PR to main.
 - Cargo.toml lists edition 2021; version is `0.3.0`.

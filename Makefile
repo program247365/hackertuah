@@ -1,48 +1,37 @@
-.PHONY: help build run test lint format verify clean bump install publish bump-formula
+.PHONY: help build run test lint format verify clean bump install publish bump-formula smoke-test
 
 BINARY   := hackertuah
 TAP_REPO := https://github.com/program247365/homebrew-tap.git
 TAP_DIR  := /tmp/homebrew-tap-update
 VERSION  := $(shell cargo metadata --no-deps --format-version 1 | python3 -c "import sys,json;print(json.load(sys.stdin)['packages'][0]['version'])")
 
-help:
-	@echo "Available commands:"
-	@echo "  make build        - Build the project (cargo build)"
-	@echo "  make run          - Run the project (cargo run)"
-	@echo "  make test         - Run tests (cargo test)"
-	@echo "  make lint         - Run clippy linter (cargo clippy)"
-	@echo "  make format       - Run cargo fmt"
-	@echo "  make verify       - Format, lint, build, and test (use after any change)"
-	@echo "  make clean        - Clean build artifacts (cargo clean)"
-	@echo "  make bump         - Bump version with cog (cog bump --auto)"
-	@echo "  make install      - Build and install binary to ~/bin"
-	@echo "  make publish      - Bump version, create GitHub release, update Homebrew formula"
-	@echo "  make bump-formula - Update Homebrew tap formula to current version"
+help: ## Show available targets
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-build:
+build: ## Build debug binary
 	cargo build
 
-run:
+run: ## Run the TUI
 	cargo run
 
-test:
+test: ## Run tests
 	cargo test
 
-lint:
+lint: ## Run clippy with warnings as errors
 	cargo clippy -- -D warnings
 
-format:
+format: ## Run cargo fmt
 	cargo fmt
 
-verify: format lint build test
+verify: format lint build test ## Format, lint, build, and test (use after any change)
 
-clean:
+clean: ## Remove build artifacts
 	cargo clean
 
-bump:
+bump: ## Bump version with cog (cog bump --auto; pre-bump hooks sync Cargo.toml)
 	cog bump --auto
 
-install:
+install: ## Build release binary and install to ~/bin
 	mkdir -p ~/bin
 	cargo build --release
 	cp target/release/$(BINARY) ~/bin/$(BINARY)
@@ -51,6 +40,7 @@ install:
 # Usage:
 #   make publish       — bump version, push, create GitHub release, update formula
 #   make bump-formula  — update Homebrew tap formula to current version only
+#   make smoke-test    — verify the published formula installs and runs cleanly
 
 publish: ## Bump version, push, create GitHub release, update Homebrew formula
 	cog bump --auto
@@ -99,3 +89,32 @@ open('$(TAP_DIR)/Formula/hackertuah.rb', 'w').write(content)"
 		git push origin main
 	rm -rf $(TAP_DIR)
 	@echo "Done. Install with: brew tap program247365/tap && brew install hackertuah"
+
+smoke-test: ## Verify the published formula installs and runs cleanly
+	@echo "Smoke-testing brew install for v$(VERSION)..."
+	@brew tap program247365/tap >/dev/null 2>&1 || true
+	@echo "==> Refreshing tap..."
+	@brew update --quiet
+	@echo "==> Asserting tap formula version matches Cargo.toml..."
+	@TAP_VERSION=$$(brew cat program247365/tap/$(BINARY) | sed -n 's|.*tags/v\(.*\)\.tar\.gz.*|\1|p'); \
+	  if [ "$$TAP_VERSION" != "$(VERSION)" ]; then \
+	    echo "FAIL: tap has v$$TAP_VERSION but Cargo.toml is v$(VERSION) — run 'make bump-formula' first"; \
+	    exit 1; \
+	  fi; \
+	  echo "  tap version: $$TAP_VERSION"
+	@echo "==> Installing (builds from source)..."
+	@if brew list --versions program247365/tap/$(BINARY) >/dev/null 2>&1; then \
+	  brew reinstall program247365/tap/$(BINARY); \
+	else \
+	  brew install program247365/tap/$(BINARY); \
+	fi
+	@echo "==> Verifying binary..."
+	@BIN="$$(brew --prefix)/bin/$(BINARY)"; \
+	  INSTALLED=$$("$$BIN" --version | awk '{print $$2}'); \
+	  if [ "$$INSTALLED" != "$(VERSION)" ]; then \
+	    echo "FAIL: $$BIN --version reports v$$INSTALLED but expected v$(VERSION)"; \
+	    exit 1; \
+	  fi; \
+	  echo "  $(BINARY) --version: $$INSTALLED"
+	@echo ""
+	@echo "Smoke test passed for v$(VERSION)."
