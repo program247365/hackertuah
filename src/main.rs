@@ -570,6 +570,20 @@ use types::{Mode, Section};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
+    let parsed = <cli::Cli as clap::Parser>::parse();
+    if let Some(cmd) = parsed.command {
+        std::process::exit(cli::run(cmd).await);
+    }
+
+    {
+        use std::io::IsTerminal;
+        if !io::stdout().is_terminal() {
+            eprintln!("stdout is not a terminal; the TUI needs one.");
+            eprintln!("hint: did you mean `hackertuah stories --json`?");
+            std::process::exit(2);
+        }
+    }
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
