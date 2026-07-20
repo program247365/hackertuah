@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Story {
     pub id: u32,
     pub title: String,
@@ -85,4 +85,30 @@ pub struct ClaudeRequest {
 pub struct Message {
     pub role: String,
     pub content: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn story_serializes_with_stable_field_names() {
+        let story = Story {
+            id: 42,
+            title: "Test".to_string(),
+            url: Some("https://example.com".to_string()),
+            text: None,
+            by: "pg".to_string(),
+            score: 100,
+            descendants: 12,
+            kids: vec![1, 2],
+        };
+        let json = serde_json::to_value(&story).unwrap();
+        assert_eq!(json["id"], 42);
+        assert_eq!(json["title"], "Test");
+        assert_eq!(json["url"], "https://example.com");
+        assert_eq!(json["by"], "pg");
+        assert_eq!(json["score"], 100);
+        assert_eq!(json["descendants"], 12);
+    }
 }
