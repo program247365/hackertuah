@@ -315,7 +315,9 @@ mod app_impl {
 
             let futures: Vec<_> = sections
                 .into_iter()
-                .map(|section| tokio::spawn(async move { (section, fetch_stories(section).await) }))
+                .map(|section| {
+                    tokio::spawn(async move { (section, fetch_stories(section, 100).await) })
+                })
                 .collect();
 
             let start_time = std::time::Instant::now();
@@ -385,7 +387,7 @@ mod app_impl {
 
             let mut matrix_rain = MatrixRain::new(terminal.size()?.width as usize);
             let section = self.current_section;
-            let stories_future = tokio::spawn(async move { fetch_stories(section).await });
+            let stories_future = tokio::spawn(async move { fetch_stories(section, 100).await });
             let start_time = std::time::Instant::now();
 
             loop {
