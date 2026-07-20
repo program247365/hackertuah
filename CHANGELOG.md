@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.5.0 - 2026-07-20
+#### Bug Fixes
+- **(make)** resolve release tag after cog bump in publish target - (abc53be) - Kevin B. Ridgway
+#### Features
+- **(cli)** document exit codes and pipe examples in --help - (6cb0b69) - Kevin B. Ridgway
+#### Miscellaneous Chores
+- **(release)** sync Cargo.toml via cog pre-bump hooks, self-documenting Makefile, smoke-test target - (4a25121) - Kevin B. Ridgway
+
+- - -
+
 ## v0.4.0 - 2026-07-20
 #### Documentation
 - **(readme)** surface agent CLI in intro and features; bump crate to 0.4.0 - (d70586a) - Kevin B. Ridgway
